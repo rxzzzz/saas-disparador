@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Dependency directories
+node_modules/
+venom-server/node_modules/
+
+# Logs
+venom-server/tokens/
+venom-server/.wwebjs_auth/
+venom-server/.wwebjs_cache/
