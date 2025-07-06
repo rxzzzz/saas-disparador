@@ -45,14 +45,17 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --background: oklch(0.98 0.01 240); /* Alterado para um cinza muito claro/off-white */
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.129 0.042 264.695);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
+  
+  /* === CORES PRIMÁRIAS ALTERADAS PARA VERDE === */
+  --primary: oklch(0.61 0.18 153.2); /* Verde Primário (como green-600) */
+  --primary-foreground: oklch(0.98 0.01 240); /* Branco para texto no botão verde */
+  
   --secondary: oklch(0.968 0.007 247.896);
   --secondary-foreground: oklch(0.208 0.042 265.755);
   --muted: oklch(0.968 0.007 247.896);
@@ -85,8 +88,11 @@
   --card-foreground: oklch(0.984 0.003 247.858);
   --popover: oklch(0.208 0.042 265.755);
   --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
+
+  /* === CORES PRIMÁRIAS ALTERADAS PARA VERDE (MODO ESCURO) === */
+  --primary: oklch(0.67 0.20 152); /* Verde mais vibrante para o modo escuro (como green-500) */
+  --primary-foreground: oklch(0.15 0.04 150); /* Preto para texto no botão verde escuro */
+  
   --secondary: oklch(0.279 0.041 260.031);
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
