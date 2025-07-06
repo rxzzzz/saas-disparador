@@ -23,6 +23,7 @@ export default function DashboardHomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scheduleOption, setScheduleOption] = useState("now");
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [contacts, setContacts] = useState(""); 
   
   // Estados para a lógica principal
   const [message, setMessage] = useState("");
