@@ -24,7 +24,7 @@ export default function ContactsPage() {
 
   return (
     <>
-      <AddContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AddContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onContactAdded={() => {}} />
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Lista de Contatos</h1>
