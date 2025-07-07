@@ -12,21 +12,16 @@ import AddContactModal from '@/components/contacts/AddContactModal';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
-
-type Contact = {
-  id: number;
-  name: string;
-  phone: string;
-  group: string | null;
-  // Futuramente, podemos adicionar as etiquetas aqui
-};
+import { Contact } from '@/types';
 
 export default function ContactsPage() {
+
   // Estado para controlar a abertura do modal
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const supabase = createClient();
 
     const fetchContacts = async () => {
@@ -44,13 +39,46 @@ export default function ContactsPage() {
         setIsLoading(false);
     };
 
+    const handleEditContact = (contact: Contact) => {
+        setEditingContact(contact);
+        setIsModalOpen(true);
+    };
+
+    const handleDeleteContact = async (contactId: number) => {
+        // Confirmação para evitar exclusões acidentais
+        if (!confirm("Você tem certeza que deseja deletar este contato? Esta ação não pode ser desfeita.")) {
+            return;
+        }
+
+        const { error } = await supabase
+            .from('contacts')
+            .delete()
+            .match({ id: contactId });
+
+        if (error) {
+            toast.error("Erro ao deletar contato.", { description: error.message });
+        } else {
+            toast.success("Contato deletado com sucesso!");
+            // Atualiza a lista na tela removendo o contato deletado
+            setContacts(contacts.filter(contact => contact.id !== contactId));
+        }
+    };
+
     useEffect(() => {
         fetchContacts();
     }, []); // O array vazio [] garante que isso rode apenas uma vez
 
   return (
     <>
-      <AddContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onContactAdded={fetchContacts} />
+          <AddContactModal
+              isOpen={isModalOpen}
+              onClose={() => {
+                  setIsModalOpen(false);
+                  setEditingContact(null); // Limpa o contato em edição
+              }}
+              onContactAdded={fetchContacts}
+              contactToEdit={editingContact} // Passa o contato para o modal
+          />
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Lista de Contatos</h1>
@@ -95,8 +123,17 @@ export default function ContactsPage() {
                                       {/* Placeholder para as etiquetas */}
                                   </TableCell>
                                   <TableCell className="flex justify-end gap-2">
-                                      <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                      <Button variant="ghost" size="icon" onClick={() => handleEditContact(contact)}>
+                                          <Edit className="h-4 w-4" />
+                                      </Button>
+                                      <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="text-destructive hover:text-destructive"
+                                          onClick={() => handleDeleteContact(contact.id)}
+                                      >
+                                          <Trash2 className="h-4 w-4" />
+                                      </Button>
                                   </TableCell>
                               </TableRow>
                           ))

@@ -1,7 +1,7 @@
 // src/components/contacts/AddContactModal.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -12,14 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { createClient } from '@/lib/supabaseClient';
 import { toast } from 'sonner';
+import { Contact } from '@/types';
 
 interface AddContactModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onContactAdded: () => void; // Nova propriedade para atualizar a lista
+  onContactAdded: () => void;
+  contactToEdit: Contact | null; // Nova propriedade
 }
 
-export default function AddContactModal({ isOpen, onClose, onContactAdded }: AddContactModalProps) {
+export default function AddContactModal({ isOpen, onClose, onContactAdded, contactToEdit }: AddContactModalProps) {
   // Estados para cada campo do formulário
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -55,24 +57,40 @@ export default function AddContactModal({ isOpen, onClose, onContactAdded }: Add
       return;
     }
 
-    // 2. Insere os dados na tabela 'contacts'
-    const { error } = await supabase
-      .from('contacts')
-      .insert([{
-        name: name,
-        phone: phone,
-        group: group || null, // Salva null se o grupo estiver vazio
-        notes: notes || null, // Salva null se as notas estiverem vazias
-        user_id: user.id, // Vincula o contato ao usuário
-      }]);
+    let error;
+
+    if (contactToEdit) {
+        // MODO DE EDIÇÃO: Executa um UPDATE
+        const { error: updateError } = await supabase
+            .from('contacts')
+            .update({ 
+                name: name, 
+                phone: phone, 
+                group: group || null, 
+                notes: notes || null 
+            })
+            .eq('id', contactToEdit.id); // A condição para saber QUAL contato atualizar
+        error = updateError;
+    } else {
+        // MODO DE ADIÇÃO: Executa um INSERT
+        const { error: insertError } = await supabase
+            .from('contacts')
+            .insert([{ 
+                name: name, 
+                phone: phone, 
+                group: group || null, 
+                notes: notes || null, 
+                user_id: user.id 
+            }]);
+        error = insertError;
+    }
 
     // 3. Trata o resultado
     if (error) {
       console.error("Erro ao salvar contato:", error);
       toast.error("Ocorreu um erro ao salvar o contato.", { description: error.message });
     } else {
-      toast.success("Contato adicionado com sucesso!");
-      resetForm(); // Limpa o formulário
+      toast.success(contactToEdit ? "Contato atualizado com sucesso!" : "Contato adicionado com sucesso!");
       onContactAdded(); // Avisa a página pai que um novo contato foi adicionado
       onClose(); // Fecha o modal
     }
@@ -80,11 +98,28 @@ export default function AddContactModal({ isOpen, onClose, onContactAdded }: Add
     setIsSubmitting(false);
   };
 
+    useEffect(() => {
+        if (contactToEdit) {
+            setName(contactToEdit.name);
+            setPhone(contactToEdit.phone);
+            setGroup(contactToEdit.group || '');
+            setNotes(contactToEdit.notes || '');
+        } else {
+            // Se não há contato para editar (modo de adição), limpa o formulário
+            setName('');
+            setPhone('');
+            setGroup('');
+            setNotes('');
+        }
+    }, [contactToEdit, isOpen]); // Roda quando o contato ou o modal muda
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Adicionar Novo Contato</DialogTitle>
+                  <DialogTitle>
+                      {contactToEdit ? 'Editar Contato' : 'Adicionar Novo Contato'}
+                  </DialogTitle>
         </DialogHeader>
         {/* Usamos um formulário para que o 'submit' funcione */}
         <form onSubmit={handleSubmit}>
