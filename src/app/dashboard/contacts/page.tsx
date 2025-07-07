@@ -1,7 +1,6 @@
 // src/app/dashboard/contacts/page.tsx
 'use client'; // Necessário para controlar o estado do modal
 
-import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,22 +8,49 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Trash2, Edit } from "lucide-react";
-import AddContactModal from '@/components/contacts/AddContactModal'; // Vamos criar a seguir
+import AddContactModal from '@/components/contacts/AddContactModal';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabaseClient';
+import { toast } from 'sonner';
+
+type Contact = {
+  id: number;
+  name: string;
+  phone: string;
+  group: string | null;
+  // Futuramente, podemos adicionar as etiquetas aqui
+};
 
 export default function ContactsPage() {
   // Estado para controlar a abertura do modal
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Dados de exemplo para preencher a tabela
-  const exampleContacts = [
-    { name: 'Maria Souza', phone: '+55 11 98765-4321', group: 'Clientes VIP', tags: ['Cliente', 'Ativo'] },
-    { name: 'Carlos Oliveira', phone: '+55 21 99876-5432', group: '-', tags: ['Prospecção'] },
-    { name: 'Ana Santos', phone: '+55 31 98765-1234', group: 'Clientes Regulares', tags: ['Cliente'] },
-  ];
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const supabase = createClient();
+
+    const fetchContacts = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase
+            .from('contacts')
+            .select('*'); // Seleciona todas as colunas
+
+        if (error) {
+            toast.error("Erro ao buscar contatos.");
+            console.error("Erro ao buscar contatos:", error);
+        } else if (data) {
+            setContacts(data);
+        }
+        setIsLoading(false);
+    };
+
+    useEffect(() => {
+        fetchContacts();
+    }, []); // O array vazio [] garante que isso rode apenas uma vez
 
   return (
     <>
-      <AddContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onContactAdded={() => {}} />
+      <AddContactModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onContactAdded={fetchContacts} />
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Lista de Contatos</h1>
@@ -51,25 +77,37 @@ export default function ContactsPage() {
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
-            {exampleContacts.map((contact, index) => (
-              <TableRow key={index}>
-                <TableCell><Checkbox /></TableCell>
-                <TableCell className="font-medium">{contact.name}</TableCell>
-                <TableCell>{contact.phone}</TableCell>
-                <TableCell>{contact.group}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    {contact.tags.map(tag => <Badge key={tag} variant="outline">{tag}</Badge>)}
-                  </div>
-                </TableCell>
-                <TableCell className="flex justify-end gap-2">
-                    <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+                  <TableBody>
+                      {isLoading ? (
+                          <TableRow>
+                              <TableCell colSpan={6} className="h-24 text-center">
+                                  Carregando...
+                              </TableCell>
+                          </TableRow>
+                      ) : contacts.length > 0 ? (
+                          contacts.map((contact) => (
+                              <TableRow key={contact.id}>
+                                  <TableCell><Checkbox /></TableCell>
+                                  <TableCell className="font-medium">{contact.name}</TableCell>
+                                  <TableCell>{contact.phone}</TableCell>
+                                  <TableCell>{contact.group || '-'}</TableCell>
+                                  <TableCell>
+                                      {/* Placeholder para as etiquetas */}
+                                  </TableCell>
+                                  <TableCell className="flex justify-end gap-2">
+                                      <Button variant="ghost" size="icon"><Edit className="h-4 w-4" /></Button>
+                                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                                  </TableCell>
+                              </TableRow>
+                          ))
+                      ) : (
+                          <TableRow>
+                              <TableCell colSpan={6} className="h-24 text-center">
+                                  Nenhum contato encontrado.
+                              </TableCell>
+                          </TableRow>
+                      )}
+                  </TableBody>
         </Table>
         
         <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
