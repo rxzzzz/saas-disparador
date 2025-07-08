@@ -1,7 +1,7 @@
 // src/app/dashboard/page.tsx
 'use client'; 
 
-import { useState, useRef } from "react"; // Adicionado 'useRef'
+import { useState } from "react"; 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,51 +10,110 @@ import { Badge } from "@/components/ui/badge";
 import ConnectWhatsAppModal from "@/components/dashboard/ConnectWhatsAppModal";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, UploadCloud, Info } from "lucide-react";
+import { CalendarIcon, UploadCloud, Info, User } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { toast } from 'sonner';
-import Papa from "papaparse";
+import { useEffect } from 'react'; // Adicione ao import do 'react'
+import { createClient } from '@/lib/supabaseClient';
+import { Contact } from '@/types'; // Nosso tipo central de contato
+import { Checkbox } from "@/components/ui/checkbox"; // O componente de caixa de seleção
 
 export default function DashboardHomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [scheduleOption, setScheduleOption] = useState("now");
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [contacts, setContacts] = useState(""); 
+
+  const supabase = createClient();
+  const [allContacts, setAllContacts] = useState<Contact[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+
+  // Array com as cores de fundo que queremos usar (classes do Tailwind)
+  const avatarColors = [
+    'bg-blue-100 text-blue-800',
+    'bg-purple-100 text-purple-800',
+    'bg-yellow-100 text-yellow-800',
+    'bg-green-100 text-green-800',
+    'bg-indigo-100 text-indigo-800',
+    'bg-pink-100 text-pink-800',
+  ];
+
+  // Função que retorna uma cor aleatória do array com base no ID do contato
+  const getRandomColor = (id: number) => {
+    return avatarColors[id % avatarColors.length];
+  };
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      setIsLoadingContacts(true);
+      const { data, error } = await supabase.from('contacts').select('*');
+      if (data) {
+        setAllContacts(data);
+      }
+      if (error) {
+        toast.error("Erro ao carregar contatos.");
+      }
+      setIsLoadingContacts(false);
+    };
+    fetchContacts();
+  }, []);
+
+  const handleContactSelect = (contactId: number) => {
+    setSelectedContacts(prevSelected =>
+      prevSelected.includes(contactId)
+        ? prevSelected.filter(id => id !== contactId)
+        : [...prevSelected, contactId]
+    );
+  };
+
+  // NOVA FUNÇÃO: Selecionar ou deselecionar todos os contatos
+  const handleSelectAll = () => {
+    if (selectedContacts.length === allContacts.length) {
+      setSelectedContacts([]); // Se todos estão selecionados, deseleciona todos
+    } else {
+      setSelectedContacts(allContacts.map(c => c.id)); // Senão, seleciona todos
+    }
+  };
   
   // Estados para a lógica principal
   const [message, setMessage] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileSelect = (file: File) => {
-    if (!file) {
-      toast.error("Nenhum arquivo selecionado.");
-      return;
-    }
-    if (file.type !== "text/csv") {
-      toast.error("Formato de arquivo inválido. Por favor, selecione um arquivo .csv");
-      return;
-    }
-
-    Papa.parse(file, {
-      complete: (result) => {
-        const nonEmptyRows = result.data.filter(row =>
-          (row as string[]).some(cell => cell.trim() !== '')
-        );
-        const csvData = nonEmptyRows.map(row => (row as string[]).join(',')).join('\n');
-        setContacts(csvData);
-        toast.success(`${nonEmptyRows.length} contatos carregados do arquivo!`);
-      },
-      header: false
-    });
-  };
 
   const handleVariableClick = (variable: string) => {
     setMessage((prevMessage) => prevMessage ? `${prevMessage} ${variable}` : variable);
   };
+
+  // Lida com o clique no botão de envio principal
+  const handleSendMessage = async () => {
+    if (!message || selectedContacts.length === 0) {
+      toast.error("Por favor, preencha a mensagem e selecione pelo menos um contato.");
+      return;
+    }
+
+    const contactsToSend = allContacts.filter(contact => selectedContacts.includes(contact.id));
+    const contactsCsv = contactsToSend.map(c => `${c.phone},${c.name},${c.group || ''}`).join('\n');
+
+    toast.info(`Preparando envio para ${contactsToSend.length} contatos...`);
+    try {
+      const response = await fetch('http://localhost:3001/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, contacts: contactsCsv }),
+      });
+      const result = await response.json();
+      if (response.ok) {
+        toast.success("Campanha recebida!");
+      } else {
+        toast.error(result.error || "Erro no servidor.");
+      }
+    } catch (error) {
+      toast.error("Falha ao conectar ao servidor de envio.");
+    }
+  };
+
 
   return (
     <>
@@ -101,30 +160,65 @@ export default function DashboardHomePage() {
             </CardContent>
           </Card>
 
-          {/* Card de Selecionar Contatos com a importação funcional */}
+          {/* === CARD DE SELECIONAR CONTATOS (VERSÃO SIMPLIFICADA E FOCADA) === */}
           <Card>
             <CardHeader>
-              <CardTitle>Selecionar Contatos</CardTitle>
+              <CardTitle>Selecionar Contatos para o Disparo</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Coluna da Esquerda: Placeholder e Textarea para contatos */}
-              <div className="flex flex-col">
-                <Input placeholder="🔍 Buscar contatos..." className="mb-4" />
-                <div className="border rounded-lg p-4 h-48 overflow-y-auto">
-                    <p className="text-sm text-center text-gray-500 pt-16">A lista de contatos salvos aparecerá aqui.</p>
+            <CardContent>
+              {/* Ferramentas de Seleção (Busca, Selecionar Todos, Contador) */}
+              <div className="flex items-center justify-between mb-4">
+                {/* Grupo de Controles na Esquerda */}
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="select-all"
+                      onCheckedChange={handleSelectAll}
+                      checked={selectedContacts.length === allContacts.length && allContacts.length > 0}
+                    />
+                    <Label htmlFor="select-all" className="text-sm font-medium">Selecionar todos</Label>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {selectedContacts.length} de {allContacts.length} selecionados
+                  </div>
                 </div>
+
+                {/* Barra de Busca na Direita */}
+                <Input placeholder="🔍 Buscar contatos..." className="max-w-xs" />
               </div>
 
-              {/* Coluna da Direita: Ferramenta de Importação */}
-              <div className="flex flex-col gap-4">
-                <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={(e) => { if (e.target.files && e.target.files[0]) { handleFileSelect(e.target.files[0]); } }} />
-                <div className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg p-6 text-center flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors h-full" onClick={() => fileInputRef.current?.click()} onDrop={(e) => { e.preventDefault(); if (e.dataTransfer.files && e.dataTransfer.files[0]) { handleFileSelect(e.dataTransfer.files[0]); } }} onDragOver={(e) => e.preventDefault()}>
-                  <UploadCloud className="h-10 w-10 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500 mb-1">Arraste e solte um arquivo .csv</p>
-                  <p className="text-xs text-gray-400 mb-2">ou</p>
-                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}>Selecione um arquivo</Button>
-                </div>
-                <div><Label>Formato do arquivo</Label><Select defaultValue="csv"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="csv">CSV (Nome, Telefone, ...)</SelectItem><SelectItem value="xlsx" disabled>Excel (XLSX) - Em breve</SelectItem><SelectItem value="google" disabled>Google Contacts - Em breve</SelectItem></SelectContent></Select></div>
+              {/* A Lista de Contatos */}
+              <div className="border rounded-lg h-72 overflow-y-auto">
+                {isLoadingContacts ? (
+                  <p className="text-center text-sm text-muted-foreground p-4">Carregando contatos...</p>
+                ) : allContacts.length > 0 ? (
+                  allContacts.map((contact: Contact) => (
+                    <div
+                      key={contact.id}
+                      className="flex items-center gap-4 p-3 border-b last:border-b-0 hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        id={`contact-${contact.id}`}
+                        checked={selectedContacts.includes(contact.id)}
+                        onCheckedChange={() => handleContactSelect(contact.id)}
+                      />
+                      <Label htmlFor={`contact-${contact.id}`} className="flex items-center gap-3 cursor-pointer flex-1">
+                        {/* O Avatar */}
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getRandomColor(contact.id)}`}>
+                          <User className="h-5 w-5" />
+                        </div>
+
+                        {/* O Nome e Telefone */}
+                        <div className="flex flex-col">
+                          <span className="font-medium">{contact.name}</span>
+                          <span className="text-xs text-muted-foreground">{contact.phone}</span>
+                        </div>
+                      </Label>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-center text-sm text-muted-foreground p-4">Nenhum contato encontrado. Adicione na página 'Contatos'.</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -227,7 +321,7 @@ export default function DashboardHomePage() {
       {/* Botões de Ação no Final - agora funcional */}
       <div className="flex justify-end gap-4 mt-8">
         <Button variant="outline">Salvar como rascunho</Button>
-        <Button disabled>Enviar mensagens</Button>
+        <Button onClick={handleSendMessage}>Enviar mensagens</Button>
       </div>
     </>
   );
