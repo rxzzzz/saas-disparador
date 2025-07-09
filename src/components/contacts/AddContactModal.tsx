@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CreatableCombobox } from '../ui/creatable-combobox';
+import { CreatableCombobox } from "../ui/creatable-combobox";
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
@@ -179,7 +179,7 @@ export default function AddContactModal({
             <div className="space-y-2">
               <Label htmlFor="group">Grupo (opcional)</Label>
               <CreatableCombobox
-                options={existingGroups.map(g => ({ value: g, label: g }))}
+                options={existingGroups.map((g) => ({ value: g, label: g }))}
                 value={group}
                 onChange={setGroup}
                 placeholder="Selecione ou crie um grupo"
