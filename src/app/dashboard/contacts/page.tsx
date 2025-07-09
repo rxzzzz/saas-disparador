@@ -48,35 +48,40 @@ export default function ContactsPage() {
   const [totalContacts, setTotalContacts] = useState(0);
   const supabase = createClient();
 
-  const filteredContacts = contacts.filter((contact) => {
-    const searchTermMatch =
-      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.phone.includes(searchTerm);
-    const groupMatch =
-      filterGroup === "Todos"
-        ? true
-        : contact.group === filterGroup ||
-          (filterGroup === "Sem Grupo" && !contact.group);
-    return searchTermMatch && groupMatch;
-  });
+  // Busca grupos únicos para o filtro (agora só para o select)
+  const [uniqueGroups, setUniqueGroups] = useState<string[]>(["Todos"]);
 
-  const uniqueGroups = [
-    "Todos",
-    ...(new Set(
-      contacts.map((c) => c.group || "Sem Grupo").filter(Boolean)
-    ) as Set<string>),
-  ];
-
-  const fetchContacts = async (page = 1) => {
+  // Função centralizada para busca, filtro e paginação no backend
+  const fetchContacts = async (
+    page = 1,
+    searchTermParam = "",
+    filterGroupParam = "Todos"
+  ) => {
     setIsLoading(true);
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
-    // Busca os contatos da página atual E a contagem total
-    const { data, error, count } = await supabase
-      .from("contacts")
-      .select("*", { count: "exact" }) // 'exact' nos dá o número total de linhas
-      .range(from, to);
+    let query = supabase.from("contacts").select("*", { count: "exact" });
+
+    // Adiciona o filtro de busca se houver um termo
+    if (searchTermParam) {
+      query = query.or(
+        `name.ilike.%${searchTermParam}%,phone.ilike.%${searchTermParam}%`
+      );
+    }
+
+    // Adiciona o filtro de grupo se não for 'Todos'
+    if (filterGroupParam !== "Todos") {
+      if (filterGroupParam === "Sem Grupo") {
+        query = query.is("group", null);
+      } else {
+        query = query.eq("group", filterGroupParam);
+      }
+    }
+
+    query = query.range(from, to);
+
+    const { data, error, count } = await query;
 
     if (error) {
       toast.error("Erro ao buscar contatos.");
@@ -84,6 +89,9 @@ export default function ContactsPage() {
       setContacts(data);
       setTotalContacts(count || 0);
       setCurrentPage(page);
+      // Atualiza os grupos únicos para o filtro
+      const groups = data.map((c: Contact) => c.group || "Sem Grupo");
+      setUniqueGroups(["Todos", ...Array.from(new Set(groups))]);
     }
     setIsLoading(false);
   };
@@ -117,9 +125,13 @@ export default function ContactsPage() {
     }
   };
 
+  // Atualiza contatos ao digitar ou filtrar (com debounce)
   useEffect(() => {
-    fetchContacts(1);
-  }, []); // O array vazio [] garante que isso rode apenas uma vez
+    const handler = setTimeout(() => {
+      fetchContacts(1, searchTerm, filterGroup); // Sempre volta para a página 1 ao filtrar
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchTerm, filterGroup]);
 
   return (
     <>
@@ -129,7 +141,9 @@ export default function ContactsPage() {
           setIsModalOpen(false);
           setEditingContact(null); // Limpa o contato em edição
         }}
-        onContactAdded={fetchContacts}
+        onContactAdded={(page?: number) =>
+          fetchContacts(page ?? currentPage, searchTerm, filterGroup)
+        }
         contactToEdit={editingContact} // Passa o contato para o modal
       />
 
@@ -184,8 +198,8 @@ export default function ContactsPage() {
                   Carregando...
                 </TableCell>
               </TableRow>
-            ) : filteredContacts.length > 0 ? (
-              filteredContacts.map((contact) => (
+            ) : contacts.length > 0 ? (
+              contacts.map((contact) => (
                 <TableRow key={contact.id}>
                   <TableCell>
                     <Checkbox />
@@ -224,7 +238,7 @@ export default function ContactsPage() {
 
         <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
           <div>
-            Mostrando {filteredContacts.length} de {totalContacts} contatos
+            Mostrando {contacts.length} de {totalContacts} contatos
           </div>
           <Pagination>
             <PaginationContent>
@@ -233,7 +247,8 @@ export default function ContactsPage() {
                   href="#"
                   onClick={(e: React.MouseEvent) => {
                     e.preventDefault();
-                    if (currentPage > 1) fetchContacts(currentPage - 1);
+                    if (currentPage > 1)
+                      fetchContacts(currentPage - 1, searchTerm, filterGroup);
                   }}
                   className={
                     currentPage === 1 ? "pointer-events-none opacity-50" : ""
@@ -247,7 +262,7 @@ export default function ContactsPage() {
                   onClick={(e: React.MouseEvent) => {
                     e.preventDefault();
                     if (currentPage < Math.ceil(totalContacts / pageSize))
-                      fetchContacts(currentPage + 1);
+                      fetchContacts(currentPage + 1, searchTerm, filterGroup);
                   }}
                   className={
                     currentPage >= Math.ceil(totalContacts / pageSize)
