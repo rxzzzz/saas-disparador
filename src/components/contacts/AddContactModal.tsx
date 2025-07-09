@@ -14,13 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CreatableCombobox } from '../ui/creatable-combobox';
 import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
@@ -32,6 +26,7 @@ interface AddContactModalProps {
   onClose: () => void;
   onContactAdded: (page?: number) => void;
   contactToEdit: Contact | null;
+  existingGroups: string[];
 }
 
 export default function AddContactModal({
@@ -39,6 +34,7 @@ export default function AddContactModal({
   onClose,
   onContactAdded,
   contactToEdit,
+  existingGroups,
 }: AddContactModalProps) {
   // Estados para cada campo do formulário
   const [name, setName] = useState("");
@@ -182,18 +178,13 @@ export default function AddContactModal({
             </div>
             <div className="space-y-2">
               <Label htmlFor="group">Grupo (opcional)</Label>
-              <Select value={group} onValueChange={setGroup}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um grupo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Clientes VIP">Clientes VIP</SelectItem>
-                  <SelectItem value="Clientes Regulares">
-                    Clientes Regulares
-                  </SelectItem>
-                  <SelectItem value="Fornecedores">Fornecedores</SelectItem>
-                </SelectContent>
-              </Select>
+              <CreatableCombobox
+                options={existingGroups.map(g => ({ value: g, label: g }))}
+                value={group}
+                onChange={setGroup}
+                placeholder="Selecione ou crie um grupo"
+                searchPlaceholder="Buscar ou criar..."
+              />
             </div>
             <div className="space-y-2">
               <Label>Etiquetas (opcional)</Label>

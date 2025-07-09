@@ -145,6 +145,7 @@ export default function ContactsPage() {
           fetchContacts(page ?? currentPage, searchTerm, filterGroup)
         }
         contactToEdit={editingContact} // Passa o contato para o modal
+        existingGroups={uniqueGroups.filter((g) => g !== "Todos")}
       />
 
       <div className="flex justify-between items-center mb-6">
