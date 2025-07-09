@@ -11,7 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pagination } from "@/components/ui/pagination";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+} from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PlusCircle, Trash2, Edit } from "lucide-react";
 import AddContactModal from "@/components/contacts/AddContactModal";
@@ -37,6 +43,9 @@ export default function ContactsPage() {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterGroup, setFilterGroup] = useState("Todos");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10); // Vamos mostrar 10 contatos por página
+  const [totalContacts, setTotalContacts] = useState(0);
   const supabase = createClient();
 
   const filteredContacts = contacts.filter((contact) => {
@@ -58,15 +67,23 @@ export default function ContactsPage() {
     ) as Set<string>),
   ];
 
-  const fetchContacts = async () => {
+  const fetchContacts = async (page = 1) => {
     setIsLoading(true);
-    const { data, error } = await supabase.from("contacts").select("*"); // Seleciona todas as colunas
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    // Busca os contatos da página atual E a contagem total
+    const { data, error, count } = await supabase
+      .from("contacts")
+      .select("*", { count: "exact" }) // 'exact' nos dá o número total de linhas
+      .range(from, to);
 
     if (error) {
       toast.error("Erro ao buscar contatos.");
-      console.error("Erro ao buscar contatos:", error);
     } else if (data) {
       setContacts(data);
+      setTotalContacts(count || 0);
+      setCurrentPage(page);
     }
     setIsLoading(false);
   };
@@ -101,7 +118,7 @@ export default function ContactsPage() {
   };
 
   useEffect(() => {
-    fetchContacts();
+    fetchContacts(1);
   }, []); // O array vazio [] garante que isso rode apenas uma vez
 
   return (
@@ -207,9 +224,40 @@ export default function ContactsPage() {
 
         <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
           <div>
-            Mostrando {filteredContacts.length} de {contacts.length} contatos
+            Mostrando {filteredContacts.length} de {totalContacts} contatos
           </div>
-          <Pagination>{/* Lógica de paginação virá depois */}</Pagination>
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e: React.MouseEvent) => {
+                    e.preventDefault();
+                    if (currentPage > 1) fetchContacts(currentPage - 1);
+                  }}
+                  className={
+                    currentPage === 1 ? "pointer-events-none opacity-50" : ""
+                  }
+                />
+              </PaginationItem>
+              {/* A lógica de renderizar os números das páginas (1, 2, 3...) virá depois, para simplificar */}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e: React.MouseEvent) => {
+                    e.preventDefault();
+                    if (currentPage < Math.ceil(totalContacts / pageSize))
+                      fetchContacts(currentPage + 1);
+                  }}
+                  className={
+                    currentPage >= Math.ceil(totalContacts / pageSize)
+                      ? "pointer-events-none opacity-50"
+                      : ""
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       </div>
     </>
