@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import ConnectWhatsAppModal from "@/components/dashboard/ConnectWhatsAppModal";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, UploadCloud, Info, User } from "lucide-react";
+import { CalendarIcon, UploadCloud, Info, User, Users } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,6 +31,9 @@ export default function DashboardHomePage() {
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+
+  // Lista de grupos únicos
+  const uniqueGroups = [...new Set(allContacts.map(c => c.group).filter(Boolean)) as Set<string>];
 
   // Array com as cores de fundo que queremos usar (classes do Tailwind)
   const avatarColors = [
@@ -76,6 +79,26 @@ export default function DashboardHomePage() {
       setSelectedContacts([]); // Se todos estão selecionados, deseleciona todos
     } else {
       setSelectedContacts(allContacts.map(c => c.id)); // Senão, seleciona todos
+    }
+  };
+  
+  // Função para selecionar/deselecionar contatos por grupo (toggle)
+  const handleGroupSelect = (groupName: string) => {
+    const contactIdsInGroup = allContacts
+      .filter(contact => contact.group === groupName)
+      .map(contact => contact.id);
+
+    // Verifica se TODOS os contatos do grupo já estão na lista de selecionados
+    const areAllSelected = contactIdsInGroup.every(id => selectedContacts.includes(id));
+
+    if (areAllSelected) {
+      // MODO DESELECIONAR: Remove todos os contatos deste grupo da seleção
+      setSelectedContacts(prevSelected => prevSelected.filter(id => !contactIdsInGroup.includes(id)));
+      toast.info(`Contatos do grupo "${groupName}" removidos da seleção.`);
+    } else {
+      // MODO SELECIONAR: Adiciona todos os contatos do grupo (evitando duplicatas)
+      setSelectedContacts(prevSelected => [...new Set([...prevSelected, ...contactIdsInGroup])]);
+      toast.info(`${contactIdsInGroup.length} contatos do grupo "${groupName}" adicionados à seleção.`);
     }
   };
   
@@ -130,7 +153,6 @@ export default function DashboardHomePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Coluna Principal (2/3 da largura) */}
         <div className="lg:col-span-2 flex flex-col gap-8">
-          
           <Card>
             <CardHeader>
               <CardTitle>Configurar Mensagem</CardTitle>
@@ -186,6 +208,38 @@ export default function DashboardHomePage() {
                 {/* Barra de Busca na Direita */}
                 <Input placeholder="🔍 Buscar contatos..." className="max-w-xs" />
               </div>
+
+              {/* NOVO CARD DE GRUPOS DE CONTATOS */}
+              <Card className="mb-4">
+                <CardHeader>
+                  <CardTitle>Grupos de Contatos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    {isLoadingContacts ? (
+                        <p className="text-sm text-muted-foreground">Carregando grupos...</p>
+                    ) : uniqueGroups.length > 0 ? (
+                        <div className="space-y-2">
+                            {uniqueGroups.map(group => (
+                                <div 
+                                    key={group} 
+                                    onClick={() => handleGroupSelect(group)}
+                                    className="flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer transition-colors"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Users className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium">{group}</span>
+                                    </div>
+                                    <Badge variant="secondary">
+                                        {allContacts.filter(c => c.group === group).length}
+                                    </Badge>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Nenhum grupo encontrado.</p>
+                    )}
+                </CardContent>
+              </Card>
 
               {/* A Lista de Contatos */}
               <div className="border rounded-lg h-72 overflow-y-auto">
