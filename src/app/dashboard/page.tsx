@@ -39,7 +39,11 @@ export default function DashboardHomePage() {
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
   const [message, setMessage] = useState("");
   // Pré-visualização dinâmica da mensagem
-  const previewContact = allContacts[0] || { name: "Exemplo", phone: "5511999999999", group: "VIP" };
+  const previewContact = allContacts[0] || {
+    name: "Exemplo",
+    phone: "5511999999999",
+    group: "VIP",
+  };
   const previewMessage = message
     ? message
         .replace(/{nome}/gi, previewContact.name || "")
@@ -432,11 +436,13 @@ export default function DashboardHomePage() {
             <CardContent className="space-y-4">
               <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
                 <p className="text-sm text-green-900 dark:text-green-200">
-                  {previewMessage || "A pré-visualização da sua mensagem aparecerá aqui..."}
+                  {previewMessage ||
+                    "A pré-visualização da sua mensagem aparecerá aqui..."}
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Esta é uma pré-visualização usando o primeiro contato da sua lista como exemplo.
+                Esta é uma pré-visualização usando o primeiro contato da sua
+                lista como exemplo.
               </p>
             </CardContent>
           </Card>
