@@ -84,21 +84,28 @@ app.post('/send', async (req, res) => {
     return res.status(400).json({ error: 'O WhatsApp não está conectado.' });
   }
   // O resto do código de envio é praticamente idêntico
-  const { message, numbers } = req.body;
+  const { message, numbers, contacts } = req.body;
   res.json({ success: true, message: 'Campanha recebida.' });
   (async () => {
-      for (const number of numbers) {
-          try {
-              const formattedNumber = `${number.replace(/\D/g, '')}@c.us`;
-              await client.sendMessage(formattedNumber, message);
-              console.log(`Mensagem enviada para ${formattedNumber}`);
-              const delay = Math.floor(Math.random() * 5000) + 5000;
-              await new Promise(resolve => setTimeout(resolve, delay));
-          } catch (error) {
-              console.error(`Erro ao enviar para ${number}:`, error.message);
-          }
+    // Se vier um array de contatos, use para personalização
+    let contactList = contacts || numbers.map(num => ({ phone: num }));
+    for (const contact of contactList) {
+      try {
+        const formattedNumber = `${(contact.phone || '').replace(/\D/g, '')}@c.us`;
+        let personalizedMessage = message
+          .replace(/{nome}/gi, contact.name || '')
+          .replace(/{telefone}/gi, contact.phone || '')
+          .replace(/{grupo}/gi, contact.group || '');
+        // Adicione outras variáveis como {empresa} se tiver no seu CSV
+        await client.sendMessage(formattedNumber, personalizedMessage);
+        console.log(`Mensagem enviada para ${formattedNumber}`);
+        const delay = Math.floor(Math.random() * 5000) + 5000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } catch (error) {
+        console.error(`Erro ao enviar para ${contact.phone}:`, error.message);
       }
-      console.log('Fim do ciclo de envios.');
+    }
+    console.log('Fim do ciclo de envios.');
   })();
 });
 

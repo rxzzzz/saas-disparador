@@ -33,14 +33,23 @@ import { Contact } from "@/types"; // Nosso tipo central de contato
 import { Checkbox } from "@/components/ui/checkbox"; // O componente de caixa de seleção
 
 export default function DashboardHomePage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [scheduleOption, setScheduleOption] = useState("now");
-  const [date, setDate] = useState<Date | undefined>(new Date());
-
-  const supabase = createClient();
+  // ...existing code...
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
+  const [message, setMessage] = useState("");
+  // Pré-visualização dinâmica da mensagem
+  const previewContact = allContacts[0] || { name: "Exemplo", phone: "5511999999999", group: "VIP" };
+  const previewMessage = message
+    ? message
+        .replace(/{nome}/gi, previewContact.name || "")
+        .replace(/{telefone}/gi, previewContact.phone || "")
+        .replace(/{grupo}/gi, previewContact.group || "")
+    : "";
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [scheduleOption, setScheduleOption] = useState("now");
+  const [date, setDate] = useState<Date | undefined>(new Date());
+  const supabase = createClient();
 
   // Lista de grupos únicos
   const uniqueGroups = [
@@ -125,7 +134,7 @@ export default function DashboardHomePage() {
   };
 
   // Estados para a lógica principal
-  const [message, setMessage] = useState("");
+  // const [message, setMessage] = useState("");
 
   const handleVariableClick = (variable: string) => {
     setMessage((prevMessage) =>
@@ -256,7 +265,8 @@ export default function DashboardHomePage() {
                     <Label htmlFor="select-all">Selecionar todos</Label>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {selectedContacts.length} de {allContacts.length} selecionados
+                    {selectedContacts.length} de {allContacts.length}{" "}
+                    selecionados
                   </div>
                 </div>
                 <div className="border rounded-lg h-96 overflow-y-auto">
@@ -271,7 +281,9 @@ export default function DashboardHomePage() {
                         <Checkbox
                           id={`c-${contact.id}`}
                           checked={selectedContacts.includes(contact.id)}
-                          onCheckedChange={() => handleContactSelect(contact.id)}
+                          onCheckedChange={() =>
+                            handleContactSelect(contact.id)
+                          }
                         />
                         <Label
                           htmlFor={`c-${contact.id}`}
@@ -294,7 +306,9 @@ export default function DashboardHomePage() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-center p-4">Nenhum contato encontrado.</p>
+                    <p className="text-center p-4">
+                      Nenhum contato encontrado.
+                    </p>
                   )}
                 </div>
               </div>
@@ -304,7 +318,9 @@ export default function DashboardHomePage() {
                 <Label>Seleção Rápida por Grupo</Label>
                 <div className="mt-2 space-y-2">
                   {isLoadingContacts ? (
-                    <p className="text-sm text-muted-foreground">Carregando...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Carregando...
+                    </p>
                   ) : uniqueGroups.length > 0 ? (
                     uniqueGroups.map((group) => (
                       <div
@@ -413,13 +429,14 @@ export default function DashboardHomePage() {
             <CardHeader>
               <CardTitle>Pré-visualização</CardTitle>
             </CardHeader>
-            <CardContent className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-              <p className="text-sm">
-                Olá {"{nome}"}, temos uma novidade especial para você!
-              </p>
-              <p className="text-xs text-green-700 dark:text-green-400 mt-4">
-                Você pode personalizar sua mensagem usando variáveis como{" "}
-                {"{nome}"} e {"{empresa}"}.
+            <CardContent className="space-y-4">
+              <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
+                <p className="text-sm text-green-900 dark:text-green-200">
+                  {previewMessage || "A pré-visualização da sua mensagem aparecerá aqui..."}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Esta é uma pré-visualização usando o primeiro contato da sua lista como exemplo.
               </p>
             </CardContent>
           </Card>
