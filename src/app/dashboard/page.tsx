@@ -1,7 +1,7 @@
 // src/app/dashboard/page.tsx
-'use client'; 
+"use client";
 
-import { useState } from "react"; 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,14 +12,24 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { CalendarIcon, UploadCloud, Info, User, Users } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { toast } from 'sonner';
-import { useEffect } from 'react'; // Adicione ao import do 'react'
-import { createClient } from '@/lib/supabaseClient';
-import { Contact } from '@/types'; // Nosso tipo central de contato
+import { toast } from "sonner";
+import { useEffect } from "react"; // Adicione ao import do 'react'
+import { createClient } from "@/lib/supabaseClient";
+import { Contact } from "@/types"; // Nosso tipo central de contato
 import { Checkbox } from "@/components/ui/checkbox"; // O componente de caixa de seleção
 
 export default function DashboardHomePage() {
@@ -33,16 +43,20 @@ export default function DashboardHomePage() {
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
 
   // Lista de grupos únicos
-  const uniqueGroups = [...new Set(allContacts.map(c => c.group).filter(Boolean)) as Set<string>];
+  const uniqueGroups = [
+    ...(new Set(
+      allContacts.map((c) => c.group).filter(Boolean)
+    ) as Set<string>),
+  ];
 
   // Array com as cores de fundo que queremos usar (classes do Tailwind)
   const avatarColors = [
-    'bg-blue-100 text-blue-800',
-    'bg-purple-100 text-purple-800',
-    'bg-yellow-100 text-yellow-800',
-    'bg-green-100 text-green-800',
-    'bg-indigo-100 text-indigo-800',
-    'bg-pink-100 text-pink-800',
+    "bg-blue-100 text-blue-800",
+    "bg-purple-100 text-purple-800",
+    "bg-yellow-100 text-yellow-800",
+    "bg-green-100 text-green-800",
+    "bg-indigo-100 text-indigo-800",
+    "bg-pink-100 text-pink-800",
   ];
 
   // Função que retorna uma cor aleatória do array com base no ID do contato
@@ -53,7 +67,7 @@ export default function DashboardHomePage() {
   useEffect(() => {
     const fetchContacts = async () => {
       setIsLoadingContacts(true);
-      const { data, error } = await supabase.from('contacts').select('*');
+      const { data, error } = await supabase.from("contacts").select("*");
       if (data) {
         setAllContacts(data);
       }
@@ -66,9 +80,9 @@ export default function DashboardHomePage() {
   }, []);
 
   const handleContactSelect = (contactId: number) => {
-    setSelectedContacts(prevSelected =>
+    setSelectedContacts((prevSelected) =>
       prevSelected.includes(contactId)
-        ? prevSelected.filter(id => id !== contactId)
+        ? prevSelected.filter((id) => id !== contactId)
         : [...prevSelected, contactId]
     );
   };
@@ -78,52 +92,68 @@ export default function DashboardHomePage() {
     if (selectedContacts.length === allContacts.length) {
       setSelectedContacts([]); // Se todos estão selecionados, deseleciona todos
     } else {
-      setSelectedContacts(allContacts.map(c => c.id)); // Senão, seleciona todos
+      setSelectedContacts(allContacts.map((c) => c.id)); // Senão, seleciona todos
     }
   };
-  
+
   // Função para selecionar/deselecionar contatos por grupo (toggle)
   const handleGroupSelect = (groupName: string) => {
     const contactIdsInGroup = allContacts
-      .filter(contact => contact.group === groupName)
-      .map(contact => contact.id);
+      .filter((contact) => contact.group === groupName)
+      .map((contact) => contact.id);
 
     // Verifica se TODOS os contatos do grupo já estão na lista de selecionados
-    const areAllSelected = contactIdsInGroup.every(id => selectedContacts.includes(id));
+    const areAllSelected = contactIdsInGroup.every((id) =>
+      selectedContacts.includes(id)
+    );
 
     if (areAllSelected) {
       // MODO DESELECIONAR: Remove todos os contatos deste grupo da seleção
-      setSelectedContacts(prevSelected => prevSelected.filter(id => !contactIdsInGroup.includes(id)));
+      setSelectedContacts((prevSelected) =>
+        prevSelected.filter((id) => !contactIdsInGroup.includes(id))
+      );
       toast.info(`Contatos do grupo "${groupName}" removidos da seleção.`);
     } else {
       // MODO SELECIONAR: Adiciona todos os contatos do grupo (evitando duplicatas)
-      setSelectedContacts(prevSelected => [...new Set([...prevSelected, ...contactIdsInGroup])]);
-      toast.info(`${contactIdsInGroup.length} contatos do grupo "${groupName}" adicionados à seleção.`);
+      setSelectedContacts((prevSelected) => [
+        ...new Set([...prevSelected, ...contactIdsInGroup]),
+      ]);
+      toast.info(
+        `${contactIdsInGroup.length} contatos do grupo "${groupName}" adicionados à seleção.`
+      );
     }
   };
-  
+
   // Estados para a lógica principal
   const [message, setMessage] = useState("");
 
   const handleVariableClick = (variable: string) => {
-    setMessage((prevMessage) => prevMessage ? `${prevMessage} ${variable}` : variable);
+    setMessage((prevMessage) =>
+      prevMessage ? `${prevMessage} ${variable}` : variable
+    );
   };
 
   // Lida com o clique no botão de envio principal
   const handleSendMessage = async () => {
     if (!message || selectedContacts.length === 0) {
-      toast.error("Por favor, preencha a mensagem e selecione pelo menos um contato.");
+      toast.error(
+        "Por favor, preencha a mensagem e selecione pelo menos um contato."
+      );
       return;
     }
 
-    const contactsToSend = allContacts.filter(contact => selectedContacts.includes(contact.id));
-    const contactsCsv = contactsToSend.map(c => `${c.phone},${c.name},${c.group || ''}`).join('\n');
+    const contactsToSend = allContacts.filter((contact) =>
+      selectedContacts.includes(contact.id)
+    );
+    const contactsCsv = contactsToSend
+      .map((c) => `${c.phone},${c.name},${c.group || ""}`)
+      .join("\n");
 
     toast.info(`Preparando envio para ${contactsToSend.length} contatos...`);
     try {
-      const response = await fetch('http://localhost:3001/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("http://localhost:3001/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, contacts: contactsCsv }),
       });
       const result = await response.json();
@@ -136,7 +166,6 @@ export default function DashboardHomePage() {
       toast.error("Falha ao conectar ao servidor de envio.");
     }
   };
-
 
   return (
     <>
@@ -151,7 +180,7 @@ export default function DashboardHomePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Coluna Principal (2/3 da largura) */}
+        {/* Coluna da Esquerda */}
         <div className="lg:col-span-2 flex flex-col gap-8">
           <Card>
             <CardHeader>
@@ -173,110 +202,135 @@ export default function DashboardHomePage() {
               <div>
                 <Label className="mb-2 block">Variáveis personalizadas</Label>
                 <div className="flex gap-2">
-                  <Badge variant="secondary" className="cursor-pointer transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={() => handleVariableClick("{nome}")}>{"{nome}"}</Badge>
-                  <Badge variant="secondary" className="cursor-pointer transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={() => handleVariableClick("{empresa}")}>{"{empresa}"}</Badge>
-                  <Badge variant="secondary" className="cursor-pointer transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={() => handleVariableClick("{data}")}>{"{data}"}</Badge>
-                  <Badge variant="secondary" className="cursor-pointer transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700" onClick={() => handleVariableClick("{telefone}")}>{"{telefone}"}</Badge>
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    onClick={() => handleVariableClick("{nome}")}
+                  >
+                    {"{nome}"}
+                  </Badge>
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    onClick={() => handleVariableClick("{empresa}")}
+                  >
+                    {"{empresa}"}
+                  </Badge>
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    onClick={() => handleVariableClick("{data}")}
+                  >
+                    {"{data}"}
+                  </Badge>
+                  <Badge
+                    variant="secondary"
+                    className="cursor-pointer transition-colors hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    onClick={() => handleVariableClick("{telefone}")}
+                  >
+                    {"{telefone}"}
+                  </Badge>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* === CARD DE SELECIONAR CONTATOS (VERSÃO SIMPLIFICADA E FOCADA) === */}
+          {/* Card de Selecionar Contatos (fundido com grupos) */}
           <Card>
             <CardHeader>
-              <CardTitle>Selecionar Contatos para o Disparo</CardTitle>
+              <CardTitle>Selecionar Contatos</CardTitle>
             </CardHeader>
-            <CardContent>
-              {/* Ferramentas de Seleção (Busca, Selecionar Todos, Contador) */}
-              <div className="flex items-center justify-between mb-4">
-                {/* Grupo de Controles na Esquerda */}
-                <div className="flex items-center space-x-4">
+            <CardContent className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Coluna Principal de Contatos (ocupa 2 de 3 colunas) */}
+              <div className="lg:col-span-2">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="select-all"
                       onCheckedChange={handleSelectAll}
-                      checked={selectedContacts.length === allContacts.length && allContacts.length > 0}
+                      checked={
+                        allContacts.length > 0 &&
+                        selectedContacts.length === allContacts.length
+                      }
                     />
-                    <Label htmlFor="select-all" className="text-sm font-medium">Selecionar todos</Label>
+                    <Label htmlFor="select-all">Selecionar todos</Label>
                   </div>
                   <div className="text-sm text-muted-foreground">
                     {selectedContacts.length} de {allContacts.length} selecionados
                   </div>
                 </div>
-
-                {/* Barra de Busca na Direita */}
-                <Input placeholder="🔍 Buscar contatos..." className="max-w-xs" />
+                <div className="border rounded-lg h-96 overflow-y-auto">
+                  {isLoadingContacts ? (
+                    <p className="text-center p-4">Carregando...</p>
+                  ) : allContacts.length > 0 ? (
+                    allContacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="flex items-center gap-3 p-3 border-b last:border-b-0"
+                      >
+                        <Checkbox
+                          id={`c-${contact.id}`}
+                          checked={selectedContacts.includes(contact.id)}
+                          onCheckedChange={() => handleContactSelect(contact.id)}
+                        />
+                        <Label
+                          htmlFor={`c-${contact.id}`}
+                          className="flex items-center gap-3 cursor-pointer flex-1"
+                        >
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${getRandomColor(
+                              contact.id
+                            )}`}
+                          >
+                            <User className="h-5 w-5" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{contact.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {contact.phone}
+                            </span>
+                          </div>
+                        </Label>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center p-4">Nenhum contato encontrado.</p>
+                  )}
+                </div>
               </div>
 
-              {/* NOVO CARD DE GRUPOS DE CONTATOS */}
-              <Card className="mb-4">
-                <CardHeader>
-                  <CardTitle>Grupos de Contatos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {isLoadingContacts ? (
-                        <p className="text-sm text-muted-foreground">Carregando grupos...</p>
-                    ) : uniqueGroups.length > 0 ? (
-                        <div className="space-y-2">
-                            {uniqueGroups.map(group => (
-                                <div 
-                                    key={group} 
-                                    onClick={() => handleGroupSelect(group)}
-                                    className="flex items-center justify-between p-2 rounded-md hover:bg-muted cursor-pointer transition-colors"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <Users className="h-4 w-4 text-muted-foreground" />
-                                        <span className="text-sm font-medium">{group}</span>
-                                    </div>
-                                    <Badge variant="secondary">
-                                        {allContacts.filter(c => c.group === group).length}
-                                    </Badge>
-                                </div>
-                            ))}
+              {/* Coluna da Direita para os Grupos (ocupa 1 de 3 colunas) */}
+              <div className="lg:col-span-1">
+                <Label>Seleção Rápida por Grupo</Label>
+                <div className="mt-2 space-y-2">
+                  {isLoadingContacts ? (
+                    <p className="text-sm text-muted-foreground">Carregando...</p>
+                  ) : uniqueGroups.length > 0 ? (
+                    uniqueGroups.map((group) => (
+                      <div
+                        key={group}
+                        onClick={() => handleGroupSelect(group)}
+                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted cursor-pointer transition-all duration-200 ease-in-out"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm font-medium">{group}</span>
                         </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground">Nenhum grupo encontrado.</p>
-                    )}
-                </CardContent>
-              </Card>
-
-              {/* A Lista de Contatos */}
-              <div className="border rounded-lg h-72 overflow-y-auto">
-                {isLoadingContacts ? (
-                  <p className="text-center text-sm text-muted-foreground p-4">Carregando contatos...</p>
-                ) : allContacts.length > 0 ? (
-                  allContacts.map((contact: Contact) => (
-                    <div
-                      key={contact.id}
-                      className="flex items-center gap-4 p-3 border-b last:border-b-0 hover:bg-muted/50"
-                    >
-                      <Checkbox
-                        id={`contact-${contact.id}`}
-                        checked={selectedContacts.includes(contact.id)}
-                        onCheckedChange={() => handleContactSelect(contact.id)}
-                      />
-                      <Label htmlFor={`contact-${contact.id}`} className="flex items-center gap-3 cursor-pointer flex-1">
-                        {/* O Avatar */}
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getRandomColor(contact.id)}`}>
-                          <User className="h-5 w-5" />
-                        </div>
-
-                        {/* O Nome e Telefone */}
-                        <div className="flex flex-col">
-                          <span className="font-medium">{contact.name}</span>
-                          <span className="text-xs text-muted-foreground">{contact.phone}</span>
-                        </div>
-                      </Label>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-center text-sm text-muted-foreground p-4">Nenhum contato encontrado. Adicione na página 'Contatos'.</p>
-                )}
+                        <Badge variant="secondary">
+                          {allContacts.filter((c) => c.group === group).length}
+                        </Badge>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhum grupo criado.
+                    </p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
-          
+
           {/* Card de Agendamento (inalterado) */}
           <Card>
             <CardHeader>
@@ -353,8 +407,8 @@ export default function DashboardHomePage() {
           </Card>
         </div>
 
-        {/* Coluna Lateral (1/3 da largura) - inalterada */}
-        <div className="lg:col-span-1">
+        {/* Coluna da Direita */}
+        <div className="lg:col-span-1 flex flex-col gap-8">
           <Card>
             <CardHeader>
               <CardTitle>Pré-visualização</CardTitle>
