@@ -15,39 +15,67 @@ let client = null;
 let qrCodeBase64 = null;
 let connectionStatus = "Desconectado";
 
-function initializeClient() {
-  console.log("Inicializando cliente...");
+function initializeClient(isNewSession = false) {
+  if (isNewSession) {
+    fs.removeSync("./.wwebjs_auth");
+    console.log("[DEBUG] Sessão antiga limpa para nova conexão.");
+  }
+
+  // Reseta os estados para um início limpo
+  qrCodeBase64 = null;
   connectionStatus = "Iniciando";
+  console.log("[DEBUG] Status -> Iniciando");
+
+  // Destrói qualquer cliente antigo para evitar conflitos
+  if (client) {
+    client.destroy();
+    client = null;
+    console.log("[DEBUG] Cliente anterior destruído.");
+  }
 
   client = new Client({
     authStrategy: new LocalAuth(),
     puppeteer: {
-      /* ...args... */
+      headless: true,
+      executablePath: puppeteer.executablePath(),
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     },
   });
 
-  // -------- MUDANÇA CRÍTICA AQUI --------
   client.on("qr", async (qr) => {
-    console.log("Recebida string bruta do QR:", qr);
     try {
-      // Usamos a nova biblioteca para converter a string bruta em uma URL de Dados (imagem)
-      const dataUrl = await qrcode.toDataURL(qr);
-      qrCodeBase64 = dataUrl;
+      qrCodeBase64 = await qrcode.toDataURL(qr);
       connectionStatus = "Aguardando QR Code";
-      console.log("QR Code convertido para Data URL com sucesso!");
+      console.log("[DEBUG] Status -> QR Code gerado e Aguardando.");
     } catch (err) {
-      console.error("Falha ao converter QR code:", err);
+      console.error("[DEBUG] Falha ao converter QR code:", err);
+      connectionStatus = "Erro";
     }
   });
 
   client.on("ready", () => {
-    /* ... código ... */
+    connectionStatus = "Conectado";
+    qrCodeBase64 = null;
+    console.log("[DEBUG] Status -> Cliente conectado e pronto!");
   });
+
+  client.on("auth_failure", (msg) => {
+    console.error("[DEBUG] Falha na autenticação!", msg);
+    connectionStatus = "Erro";
+  });
+
   client.on("disconnected", (reason) => {
-    /* ... código ... */
+    console.log("[DEBUG] Cliente foi desconectado:", reason);
+    if (client) client.destroy();
+    client = null;
+    connectionStatus = "Desconectado";
+    fs.removeSync("./.wwebjs_auth");
   });
+
+  console.log("[DEBUG] Chamando client.initialize()...");
   client.initialize().catch((err) => {
-    /* ... código ... */
+    console.error("[DEBUG] Erro CRÍTICO de inicialização:", err);
+    connectionStatus = "Erro";
   });
 }
 
@@ -101,8 +129,22 @@ app.post("/send", async (req, res) => {
   const { message, numbers, contacts } = req.body;
   res.json({ success: true, message: "Campanha recebida." });
   (async () => {
-    // Se vier um array de contatos, use para personalização
-    let contactList = contacts || numbers.map((num) => ({ phone: num }));
+    // Nova lógica robusta para processar a lista de contatos CSV
+    const contactList = contacts
+      .trim()
+      .split("\n")
+      .map((line) => {
+        const [phone, name, company] = line.split(",");
+        if (phone && phone.trim()) {
+          return {
+            phone: phone.trim(),
+            name: name?.trim(),
+            company: company?.trim(),
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
     for (const contact of contactList) {
       try {
         const formattedNumber = `${(contact.phone || "").replace(
