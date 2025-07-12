@@ -14,6 +14,8 @@ const port = 3001;
 let client = null;
 let qrCodeBase64 = null;
 let connectionStatus = "Desconectado";
+let lastReport = null;
+let isSending = false;
 
 function initializeClient(isNewSession = false) {
   if (isNewSession) {
@@ -122,50 +124,82 @@ app.get("/status", async (req, res) => {
 });
 
 app.post("/send", async (req, res) => {
+  if (isSending) {
+    return res
+      .status(400)
+      .json({ error: "Uma campanha já está em andamento." });
+  }
   if (!client || connectionStatus !== "Conectado") {
     return res.status(400).json({ error: "O WhatsApp não está conectado." });
   }
-  // O resto do código de envio é praticamente idêntico
-  const { message, numbers, contacts } = req.body;
-  res.json({ success: true, message: "Campanha recebida." });
+
+  const { message, contacts } = req.body;
+
+  if (!message || !contacts) {
+    return res
+      .status(400)
+      .json({ error: "Mensagem e contatos são obrigatórios." });
+  }
+
+  // LÓGICA DE PARSE CORRIGIDA E COMPLETA
+  const contactList = contacts
+    .trim()
+    .split("\n")
+    .map((line) => {
+      const [phone, name, group] = line.split(",");
+      if (phone && phone.trim()) {
+        return {
+          phone: phone.trim(),
+          name: name?.trim(),
+          group: group?.trim(),
+        };
+      }
+      return null;
+    })
+    .filter(Boolean); // Remove qualquer linha nula/inválida
+
+  if (contactList.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "Nenhum contato válido encontrado para o disparo." });
+  }
+
+  isSending = true;
+  lastReport = null;
+  res.json({ success: true, message: "Campanha recebida. O envio começou." });
+
+  // Loop de envio agora com os dados limpos
   (async () => {
-    // Nova lógica robusta para processar a lista de contatos CSV
-    const contactList = contacts
-      .trim()
-      .split("\n")
-      .map((line) => {
-        const [phone, name, company] = line.split(",");
-        if (phone && phone.trim()) {
-          return {
-            phone: phone.trim(),
-            name: name?.trim(),
-            company: company?.trim(),
-          };
-        }
-        return null;
-      })
-      .filter(Boolean);
+    const report = { success: [], failed: [] };
+    console.log(`Iniciando campanha para ${contactList.length} contatos.`);
     for (const contact of contactList) {
       try {
-        const formattedNumber = `${(contact.phone || "").replace(
-          /\D/g,
-          ""
-        )}@c.us`;
         let personalizedMessage = message
           .replace(/{nome}/gi, contact.name || "")
-          .replace(/{telefone}/gi, contact.phone || "")
           .replace(/{grupo}/gi, contact.group || "");
-        // Adicione outras variáveis como {empresa} se tiver no seu CSV
+
+        const formattedNumber = `${contact.phone.replace(/\D/g, "")}@c.us`;
         await client.sendMessage(formattedNumber, personalizedMessage);
-        console.log(`Mensagem enviada para ${formattedNumber}`);
-        const delay = Math.floor(Math.random() * 5000) + 5000;
-        await new Promise((resolve) => setTimeout(resolve, delay));
+        report.success.push(contact.phone);
+        console.log(`Sucesso para ${contact.phone}`);
       } catch (error) {
-        console.error(`Erro ao enviar para ${contact.phone}:`, error.message);
+        report.failed.push({ phone: contact.phone, reason: error.message });
+        console.error(`Falha para ${contact.phone}:`, error.message);
       }
+      const delay = Math.floor(Math.random() * 3000) + 2000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
-    console.log("Fim do ciclo de envios.");
+    console.log("Fim da campanha.");
+    lastReport = report;
+    isSending = false;
   })();
+});
+
+app.get("/report", (req, res) => {
+  if (isSending) {
+    return res.json({ status: "enviando" });
+  }
+  res.json({ status: "concluido", report: lastReport });
 });
 
 app.listen(port, () => {

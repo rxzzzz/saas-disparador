@@ -33,6 +33,7 @@ import { Contact } from "@/types"; // Nosso tipo central de contato
 import { Checkbox } from "@/components/ui/checkbox"; // O componente de caixa de seleção
 
 export default function DashboardHomePage() {
+  const [isCampaignSending, setIsCampaignSending] = useState(false);
   // ...existing code...
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
@@ -154,15 +155,14 @@ export default function DashboardHomePage() {
       );
       return;
     }
-
     const contactsToSend = allContacts.filter((contact) =>
       selectedContacts.includes(contact.id)
     );
     const contactsCsv = contactsToSend
       .map((c) => `${c.phone},${c.name},${c.group || ""}`)
       .join("\n");
-
-    toast.info(`Preparando envio para ${contactsToSend.length} contatos...`);
+    setIsCampaignSending(true);
+    toast.info(`Enviando campanha para ${contactsToSend.length} contatos...`);
     try {
       const response = await fetch("http://localhost:3001/send", {
         method: "POST",
@@ -170,13 +170,30 @@ export default function DashboardHomePage() {
         body: JSON.stringify({ message, contacts: contactsCsv }),
       });
       const result = await response.json();
-      if (response.ok) {
-        toast.success("Campanha recebida!");
-      } else {
-        toast.error(result.error || "Erro no servidor.");
+      if (!response.ok) {
+        throw new Error(result.error || "Erro no servidor.");
       }
+      // Começa a verificar o relatório
+      const reportInterval = setInterval(async () => {
+        const reportRes = await fetch("http://localhost:3001/report");
+        const reportData = await reportRes.json();
+        if (reportData.status === "concluido") {
+          clearInterval(reportInterval);
+          setIsCampaignSending(false);
+          toast.success("Campanha finalizada!", {
+            description: `Sucesso: ${reportData.report.success.length}, Falhas: ${reportData.report.failed.length}.`,
+          });
+        }
+      }, 5000);
     } catch (error) {
-      toast.error("Falha ao conectar ao servidor de envio.");
+      let description = "";
+      if (error instanceof Error) {
+        description = error.message;
+      } else if (typeof error === "string") {
+        description = error;
+      }
+      toast.error("Falha ao iniciar campanha.", { description });
+      setIsCampaignSending(false);
     }
   };
 
@@ -452,7 +469,9 @@ export default function DashboardHomePage() {
       {/* Botões de Ação no Final - agora funcional */}
       <div className="flex justify-end gap-4 mt-8">
         <Button variant="outline">Salvar como rascunho</Button>
-        <Button onClick={handleSendMessage}>Enviar mensagens</Button>
+        <Button onClick={handleSendMessage} disabled={isCampaignSending}>
+          {isCampaignSending ? "Enviando..." : "Enviar mensagens"}
+        </Button>
       </div>
     </>
   );
