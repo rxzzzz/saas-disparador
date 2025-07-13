@@ -150,50 +150,48 @@ export default function DashboardHomePage() {
   // Lida com o clique no botão de envio principal
   const handleSendMessage = async () => {
     if (!message || selectedContacts.length === 0) {
-      toast.error(
-        "Por favor, preencha a mensagem e selecione pelo menos um contato."
-      );
+      toast.error("Preencha a mensagem e selecione pelo menos um contato.");
       return;
     }
+
+    // 1. Busca os dados do usuário logado
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Sessão expirada. Por favor, faça o login novamente.");
+      return;
+    }
+
     const contactsToSend = allContacts.filter((contact) =>
       selectedContacts.includes(contact.id)
     );
     const contactsCsv = contactsToSend
       .map((c) => `${c.phone},${c.name},${c.group || ""}`)
       .join("\n");
-    setIsCampaignSending(true);
-    toast.info(`Enviando campanha para ${contactsToSend.length} contatos...`);
+
+    toast.info(`Preparando envio para ${contactsToSend.length} contatos...`);
+
     try {
       const response = await fetch("http://localhost:3001/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, contacts: contactsCsv }),
+        // 2. Adiciona o userId ao corpo da requisição
+        body: JSON.stringify({
+          message,
+          contacts: contactsCsv,
+          userId: user.id,
+        }),
       });
+
       const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Erro no servidor.");
+      if (response.ok) {
+        toast.success("Campanha registrada! O envio começou.");
+      } else {
+        toast.error(result.error || "Erro no servidor.");
       }
-      // Começa a verificar o relatório
-      const reportInterval = setInterval(async () => {
-        const reportRes = await fetch("http://localhost:3001/report");
-        const reportData = await reportRes.json();
-        if (reportData.status === "concluido") {
-          clearInterval(reportInterval);
-          setIsCampaignSending(false);
-          toast.success("Campanha finalizada!", {
-            description: `Sucesso: ${reportData.report.success.length}, Falhas: ${reportData.report.failed.length}.`,
-          });
-        }
-      }, 5000);
     } catch (error) {
-      let description = "";
-      if (error instanceof Error) {
-        description = error.message;
-      } else if (typeof error === "string") {
-        description = error;
-      }
-      toast.error("Falha ao iniciar campanha.", { description });
-      setIsCampaignSending(false);
+      toast.error("Falha ao conectar ao servidor de envio.");
     }
   };
 

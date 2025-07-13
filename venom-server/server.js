@@ -1,3 +1,8 @@
+const { createClient } = require("@supabase/supabase-js");
+const supabaseUrl = "https://lbppqiwoitkldqyukvxl.supabase.co"; // Substitua pela sua URL do Supabase
+const supabaseKey =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxicHBxaXdvaXRrbGRxeXVrdnhsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MTY1NzU2NiwiZXhwIjoyMDY3MjMzNTY2fQ.V829zb2ZnHpGfulEg_vSHRwRDUUC99SFWdxV9dEJXBs"; // IMPORTANTE: Use a chave 'service_role' (secret)
+const supabase = createClient(supabaseUrl, supabaseKey);
 // venom-server/server.js - A VERSÃO FINAL E CORRETA
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const puppeteer = require("puppeteer");
@@ -92,6 +97,11 @@ app.post("/connect", (req, res) => {
   }
 });
 
+// --- MANTENHA app.listen NO FINAL DO ARQUIVO! ---
+app.listen(port, () => {
+  console.log(`Servidor WhatsApp rodando em http://localhost:${port}`);
+});
+
 app.post("/disconnect", async (req, res) => {
   if (client) {
     await client.logout();
@@ -123,25 +133,32 @@ app.get("/status", async (req, res) => {
   res.json({ status: connectionStatus, qrCode: qrCodeBase64 });
 });
 
+app.get("/report", (req, res) => {
+  if (isSending) {
+    return res.json({ status: "enviando" });
+  }
+  res.json({ status: "concluido", report: lastReport });
+});
+
 app.post("/send", async (req, res) => {
   if (isSending) {
     return res
-      .status(400)
-      .json({ error: "Uma campanha já está em andamento." });
+      .status(429)
+      .json({
+        error: "Uma campanha já está em andamento. Por favor, aguarde.",
+      });
   }
   if (!client || connectionStatus !== "Conectado") {
-    return res.status(400).json({ error: "O WhatsApp não está conectado." });
+    return res.status(400).json({ error: "WhatsApp não está conectado." });
   }
 
-  const { message, contacts } = req.body;
-
-  if (!message || !contacts) {
+  const { message, contacts, userId } = req.body;
+  if (!userId || !message || !contacts) {
     return res
       .status(400)
-      .json({ error: "Mensagem e contatos são obrigatórios." });
+      .json({ error: "Dados insuficientes para iniciar a campanha." });
   }
 
-  // LÓGICA DE PARSE CORRIGIDA E COMPLETA
   const contactList = contacts
     .trim()
     .split("\n")
@@ -156,54 +173,105 @@ app.post("/send", async (req, res) => {
       }
       return null;
     })
-    .filter(Boolean); // Remove qualquer linha nula/inválida
+    .filter(Boolean);
 
   if (contactList.length === 0) {
-    return res
-      .status(400)
-      .json({ error: "Nenhum contato válido encontrado para o disparo." });
+    return res.status(400).json({ error: "Nenhum contato válido na lista." });
   }
 
-  isSending = true;
-  lastReport = null;
-  res.json({ success: true, message: "Campanha recebida. O envio começou." });
+  isSending = true; // Bloqueia novos envios
+  res.json({
+    success: true,
+    message: "Campanha recebida. O envio foi iniciado.",
+  });
 
-  // Loop de envio agora com os dados limpos
+  // Executa o envio em segundo plano
   (async () => {
-    const report = { success: [], failed: [] };
-    console.log(`Iniciando campanha para ${contactList.length} contatos.`);
-    for (const contact of contactList) {
-      try {
-        let personalizedMessage = message
-          .replace(/{nome}/gi, contact.name || "")
-          .replace(/{grupo}/gi, contact.group || "");
+    console.log(
+      `[ENVIO] Iniciando campanha para ${contactList.length} contatos.`
+    );
+    let campaignId = null;
 
-        const formattedNumber = `${contact.phone.replace(/\D/g, "")}@c.us`;
-        await client.sendMessage(formattedNumber, personalizedMessage);
-        report.success.push(contact.phone);
-        console.log(`Sucesso para ${contact.phone}`);
-      } catch (error) {
-        report.failed.push({ phone: contact.phone, reason: error.message });
-        console.error(`Falha para ${contact.phone}:`, error.message);
+    try {
+      // 1. Cria a campanha no banco de dados
+      const { data: campaignData, error: campaignError } = await supabase
+        .from("campaigns")
+        .insert({
+          message: message,
+          total_recipients: contactList.length,
+          user_id: userId,
+          status: "sending",
+        })
+        .select("id")
+        .single();
+
+      if (campaignError || !campaignData) {
+        throw new Error(
+          `Falha ao criar campanha no DB: ${campaignError?.message}`
+        );
       }
-      const delay = Math.floor(Math.random() * 3000) + 2000;
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      campaignId = campaignData.id;
+      console.log(`[ENVIO] Campanha registrada no DB com ID: ${campaignId}`);
+
+      // 2. Loop de envio
+      let successCount = 0;
+      for (const contact of contactList) {
+        try {
+          const personalizedMessage = message
+            .replace(/{nome}/gi, contact.name || "")
+            .replace(/{grupo}/gi, contact.group || "");
+          const formattedNumber = `${contact.phone.replace(/\D/g, "")}@c.us`;
+
+          console.log(`[ENVIO] Tentando enviar para ${formattedNumber}...`);
+          await client.sendMessage(formattedNumber, personalizedMessage);
+
+          await supabase
+            .from("dispatch_logs")
+            .insert({
+              campaign_id: campaignId,
+              contact_phone: contact.phone,
+              status: "success",
+            });
+          console.log(`[ENVIO] Sucesso para ${formattedNumber}`);
+          successCount++;
+        } catch (error) {
+          console.error(
+            `[ENVIO] Falha ao enviar para ${contact.phone}:`,
+            error.message
+          );
+          await supabase
+            .from("dispatch_logs")
+            .insert({
+              campaign_id: campaignId,
+              contact_phone: contact.phone,
+              status: "failed",
+              error_reason: error.message,
+            });
+        }
+        const delay = Math.floor(Math.random() * 2000) + 1000; // Delay de 1-3 segundos para teste
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+
+      // 3. Atualiza o status final da campanha
+      const finalStatus =
+        successCount === contactList.length ? "completed" : "partial_failure";
+      await supabase
+        .from("campaigns")
+        .update({ status: finalStatus })
+        .eq("id", campaignId);
+      console.log(
+        `[ENVIO] Campanha ${campaignId} finalizada com status: ${finalStatus}`
+      );
+    } catch (e) {
+      console.error("[ENVIO] Erro crítico no processo de campanha:", e.message);
+      if (campaignId) {
+        await supabase
+          .from("campaigns")
+          .update({ status: "failed" })
+          .eq("id", campaignId);
+      }
+    } finally {
+      isSending = false; // Libera para novos envios
     }
-    console.log("Fim da campanha.");
-    lastReport = report;
-    isSending = false;
   })();
-});
-
-app.get("/report", (req, res) => {
-  if (isSending) {
-    return res.json({ status: "enviando" });
-  }
-  res.json({ status: "concluido", report: lastReport });
-});
-
-app.listen(port, () => {
-  console.log(`Servidor whatsapp-web.js rodando em http://localhost:${port}`);
-  // Tenta reconectar automaticamente
-  initializeClient();
 });
