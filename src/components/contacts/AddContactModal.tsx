@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,12 +54,26 @@ export default function AddContactModal({
     setNotes("");
   };
 
+  // Esquema de validação Zod
+  const contactSchema = z.object({
+    name: z.string().min(3, "O nome deve ter pelo menos 3 caracteres."),
+    phone: z
+      .string()
+      .regex(
+        /^\d{10,15}$/,
+        "O telefone deve conter apenas números e ter entre 10 e 15 dígitos."
+      ),
+  });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    if (!name || !phone) {
-      toast.error("Nome e Telefone são obrigatórios.");
+    const result = contactSchema.safeParse({ name, phone });
+    if (!result.success) {
+      // Pega o primeiro erro e mostra no toast
+      const firstError = result.error.issues[0];
+      toast.error(firstError.message);
       setIsSubmitting(false);
       return;
     }
@@ -80,14 +95,12 @@ export default function AddContactModal({
       const { error: updateError } = await supabase
         .from("contacts")
         .update({
-          name: name,
-          phone: phone,
+          ...result.data,
           group: group || null,
           notes: notes || null,
         })
-        .eq("id", contactToEdit.id); // A condição para saber QUAL contato atualizar
+        .eq("id", contactToEdit.id);
       error = updateError;
-      // Após editar, apenas atualiza mantendo a página
       if (!error) {
         toast.success("Contato atualizado com sucesso!");
         onContactAdded();
@@ -104,8 +117,7 @@ export default function AddContactModal({
         .from("contacts")
         .insert([
           {
-            name,
-            phone,
+            ...result.data,
             group: group || null,
             notes: notes || null,
             user_id: user.id,
@@ -114,11 +126,10 @@ export default function AddContactModal({
         .select();
       error = insertError;
       if (!error && insertData) {
-        // Após adicionar, calcula a última página e atualiza a tabela lá
         const { count } = await supabase
           .from("contacts")
           .select("*", { count: "exact", head: true });
-        const pageSize = 10; // Certifique-se que este valor é o mesmo da sua página de contatos
+        const pageSize = 10;
         const lastPage = Math.ceil((count || 0) / pageSize);
         toast.success("Contato adicionado com sucesso!");
         onContactAdded(lastPage > 0 ? lastPage : 1);

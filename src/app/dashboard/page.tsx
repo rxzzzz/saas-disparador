@@ -149,8 +149,12 @@ export default function DashboardHomePage() {
 
   // Lida com o clique no botão de envio principal
   const handleSendMessage = async () => {
-    if (!message || selectedContacts.length === 0) {
-      toast.error("Preencha a mensagem e selecione pelo menos um contato.");
+    if (!message.trim()) {
+      toast.error("A mensagem não pode estar vazia.");
+      return;
+    }
+    if (selectedContacts.length === 0) {
+      toast.error("Selecione pelo menos um contato para o disparo.");
       return;
     }
 
