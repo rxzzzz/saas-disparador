@@ -1,13 +1,21 @@
 // src/app/dashboard/reports/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { createClient } from '@/lib/supabaseClient';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { createClient } from "@/lib/supabaseClient";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // Definimos um tipo para nossas campanhas
 type Campaign = {
@@ -22,14 +30,15 @@ export default function ReportsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const supabase = createClient();
+  const router = useRouter();
 
   useEffect(() => {
     const fetchCampaigns = async () => {
       setIsLoading(true);
       const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .order('created_at', { ascending: false }); // Ordena pelas mais recentes
+        .from("campaigns")
+        .select("*")
+        .order("created_at", { ascending: false }); // Ordena pelas mais recentes
 
       if (data) {
         setCampaigns(data);
@@ -42,14 +51,14 @@ export default function ReportsPage() {
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'success';
-      case 'partial_failure':
-        return 'secondary';
-      case 'failed':
-        return 'destructive';
+      case "completed":
+        return "success";
+      case "partial_failure":
+        return "secondary";
+      case "failed":
+        return "destructive";
       default:
-        return 'outline';
+        return "outline";
     }
   };
 
@@ -75,22 +84,46 @@ export default function ReportsPage() {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={4} className="h-24 text-center">Carregando relatórios...</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    Carregando relatórios...
+                  </TableCell>
+                </TableRow>
               ) : campaigns.length > 0 ? (
                 campaigns.map((campaign) => (
-                  <TableRow key={campaign.id}>
+                  <TableRow
+                    key={campaign.id}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      router.push(`/dashboard/reports/${campaign.id}`)
+                    }
+                  >
                     <TableCell>
-                      {format(new Date(campaign.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      {format(
+                        new Date(campaign.created_at),
+                        "dd/MM/yyyy 'às' HH:mm",
+                        { locale: ptBR }
+                      )}
                     </TableCell>
-                    <TableCell className="max-w-xs truncate">{campaign.message}</TableCell>
-                    <TableCell className="text-center">{campaign.total_recipients}</TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {campaign.message}
+                    </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={getStatusVariant(campaign.status) as any}>{campaign.status}</Badge>
+                      {campaign.total_recipients}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={getStatusVariant(campaign.status) as any}>
+                        {campaign.status}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
-                <TableRow><TableCell colSpan={4} className="h-24 text-center">Nenhuma campanha encontrada.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 text-center">
+                    Nenhuma campanha encontrada.
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
