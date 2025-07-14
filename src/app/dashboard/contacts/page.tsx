@@ -315,7 +315,12 @@ export default function ContactsPage() {
                     </div>
                   ))}
               </div>
-              <Button variant="outline" size="sm" className="w-full mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-4"
+                onClick={() => setIsModalOpen(true)}
+              >
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Criar novo grupo
               </Button>
