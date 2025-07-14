@@ -110,10 +110,16 @@ export default function DashboardHomePage() {
 
   // NOVA FUNÇÃO: Selecionar ou deselecionar todos os contatos
   const handleSelectAll = () => {
-    if (selectedContacts.length === allContacts.length) {
-      setSelectedContacts([]); // Se todos estão selecionados, deseleciona todos
+    const filteredIds = filteredContacts.map((c) => c.id);
+    const allVisibleSelected =
+      filteredIds.length > 0 &&
+      filteredIds.every((id) => selectedContacts.includes(id));
+    if (allVisibleSelected) {
+      setSelectedContacts((prev) =>
+        prev.filter((id) => !filteredIds.includes(id))
+      );
     } else {
-      setSelectedContacts(allContacts.map((c) => c.id)); // Senão, seleciona todos
+      setSelectedContacts((prev) => [...new Set([...prev, ...filteredIds])]);
     }
   };
 
@@ -206,6 +212,13 @@ export default function DashboardHomePage() {
     }
   };
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const filteredContacts = allContacts.filter(
+    (contact) =>
+      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      contact.phone.includes(searchTerm)
+  );
+
   return (
     <>
       <ConnectWhatsAppModal
@@ -288,22 +301,28 @@ export default function DashboardHomePage() {
                       id="select-all"
                       onCheckedChange={handleSelectAll}
                       checked={
-                        allContacts.length > 0 &&
-                        selectedContacts.length === allContacts.length
+                        filteredContacts.length > 0 &&
+                        selectedContacts.length === filteredContacts.length
                       }
                     />
                     <Label htmlFor="select-all">Selecionar todos</Label>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {selectedContacts.length} de {allContacts.length}{" "}
+                    {selectedContacts.length} de {filteredContacts.length}{" "}
                     selecionados
                   </div>
                 </div>
+                <Input
+                  placeholder="🔍 Buscar contatos..."
+                  className="mb-4"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
                 <div className="border rounded-lg h-96 overflow-y-auto">
                   {isLoadingContacts ? (
                     <p className="text-center p-4">Carregando...</p>
                   ) : allContacts.length > 0 ? (
-                    allContacts.map((contact) => (
+                    filteredContacts.map((contact) => (
                       <div
                         key={contact.id}
                         className="flex items-center gap-3 p-3 border-b last:border-b-0"
