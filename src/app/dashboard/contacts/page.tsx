@@ -33,6 +33,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function ContactsPage() {
   // Estado para controlar a abertura do modal
@@ -155,125 +157,170 @@ export default function ContactsPage() {
           Adicionar Contato
         </Button>
       </div>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-3">
+          <div className="bg-card p-6 rounded-lg shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <Input
+                  placeholder="🔍 Buscar por nome ou telefone..."
+                  className="max-w-sm"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Select value={filterGroup} onValueChange={setFilterGroup}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filtrar por grupo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {uniqueGroups.map((group) => (
+                      <SelectItem key={group} value={group}>
+                        {group}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-      <div className="bg-card p-6 rounded-lg shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <Input
-              placeholder="🔍 Buscar por nome ou telefone..."
-              className="max-w-sm"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <Select value={filterGroup} onValueChange={setFilterGroup}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filtrar por grupo" />
-              </SelectTrigger>
-              <SelectContent>
-                {uniqueGroups.map((group) => (
-                  <SelectItem key={group} value={group}>
-                    {group}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox disabled />
+                  </TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Grupo</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">
+                      Carregando...
+                    </TableCell>
+                  </TableRow>
+                ) : contacts.length > 0 ? (
+                  contacts.map((contact) => (
+                    <TableRow key={contact.id}>
+                      <TableCell>
+                        <Checkbox />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {contact.name}
+                      </TableCell>
+                      <TableCell>{contact.phone}</TableCell>
+                      <TableCell>{contact.group || "-"}</TableCell>
+                      <TableCell className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditContact(contact)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteContact(contact.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24">
+                      Nenhum contato encontrado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+              <div>
+                Mostrando {contacts.length} de {totalContacts} contatos
+              </div>
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e: React.MouseEvent) => {
+                        e.preventDefault();
+                        if (currentPage > 1)
+                          fetchContacts(
+                            currentPage - 1,
+                            searchTerm,
+                            filterGroup
+                          );
+                      }}
+                      className={
+                        currentPage === 1
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                  {/* A lógica de renderizar os números das páginas (1, 2, 3...) virá depois, para simplificar */}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e: React.MouseEvent) => {
+                        e.preventDefault();
+                        if (currentPage < Math.ceil(totalContacts / pageSize))
+                          fetchContacts(
+                            currentPage + 1,
+                            searchTerm,
+                            filterGroup
+                          );
+                      }}
+                      className={
+                        currentPage >= Math.ceil(totalContacts / pageSize)
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+            <div className="bg-card p-6 rounded-lg shadow-sm">...</div>
           </div>
         </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">
-                <Checkbox disabled />
-              </TableHead>
-              <TableHead>Nome</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Grupo</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center h-24">
-                  Carregando...
-                </TableCell>
-              </TableRow>
-            ) : contacts.length > 0 ? (
-              contacts.map((contact) => (
-                <TableRow key={contact.id}>
-                  <TableCell>
-                    <Checkbox />
-                  </TableCell>
-                  <TableCell className="font-medium">{contact.name}</TableCell>
-                  <TableCell>{contact.phone}</TableCell>
-                  <TableCell>{contact.group || "-"}</TableCell>
-                  <TableCell className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEditContact(contact)}
+        {/* ADICIONE ESTE NOVO BLOCO PARA A COLUNA DA DIREITA */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Grupos de Contatos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {uniqueGroups
+                  .filter((g) => g !== "Todos" && g !== "Sem Grupo")
+                  .map((group) => (
+                    <div
+                      key={group}
+                      className="flex items-center justify-between p-2 rounded-md hover:bg-muted"
                     >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteContact(contact.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center h-24">
-                  Nenhum contato encontrado.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-
-        <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-          <div>
-            Mostrando {contacts.length} de {totalContacts} contatos
-          </div>
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={(e: React.MouseEvent) => {
-                    e.preventDefault();
-                    if (currentPage > 1)
-                      fetchContacts(currentPage - 1, searchTerm, filterGroup);
-                  }}
-                  className={
-                    currentPage === 1 ? "pointer-events-none opacity-50" : ""
-                  }
-                />
-              </PaginationItem>
-              {/* A lógica de renderizar os números das páginas (1, 2, 3...) virá depois, para simplificar */}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={(e: React.MouseEvent) => {
-                    e.preventDefault();
-                    if (currentPage < Math.ceil(totalContacts / pageSize))
-                      fetchContacts(currentPage + 1, searchTerm, filterGroup);
-                  }}
-                  className={
-                    currentPage >= Math.ceil(totalContacts / pageSize)
-                      ? "pointer-events-none opacity-50"
-                      : ""
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+                      <span className="text-sm font-medium">{group}</span>
+                      <Badge variant="secondary">
+                        {contacts.filter((c) => c.group === group).length}
+                      </Badge>
+                    </div>
+                  ))}
+              </div>
+              <Button variant="outline" size="sm" className="w-full mt-4">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Criar novo grupo
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>
