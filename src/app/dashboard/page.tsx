@@ -442,7 +442,7 @@ export default function DashboardHomePage() {
                     </div>
                     <div className="flex items-center justify-between mt-4">
                       <div className="text-sm text-muted-foreground">
-                        {selectedContacts.length} de {filteredContacts.length}{" "}
+                        {selectedContacts.length} de {totalContacts}{" "}
                         selecionados
                       </div>
                       <Pagination>
