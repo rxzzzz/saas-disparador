@@ -10,7 +10,14 @@ import { Badge } from "@/components/ui/badge";
 import ConnectWhatsAppModal from "@/components/dashboard/ConnectWhatsAppModal";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, UploadCloud, Info, User, Users } from "lucide-react";
+import {
+  CalendarIcon,
+  UploadCloud,
+  Info,
+  User,
+  Users,
+  Loader2,
+} from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -472,6 +479,9 @@ export default function DashboardHomePage() {
       <div className="flex justify-end gap-4 mt-8">
         <Button variant="outline">Salvar como rascunho</Button>
         <Button onClick={handleSendMessage} disabled={isCampaignSending}>
+          {isCampaignSending && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
           {isCampaignSending ? "Enviando..." : "Enviar mensagens"}
         </Button>
       </div>

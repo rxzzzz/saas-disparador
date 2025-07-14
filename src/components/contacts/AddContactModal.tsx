@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CreatableCombobox } from "../ui/creatable-combobox";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { Contact } from "@/types";
@@ -223,6 +223,9 @@ export default function AddContactModal({
               </Button>
             </DialogClose>
             <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               {isSubmitting ? "Salvando..." : "Salvar Contato"}
             </Button>
           </DialogFooter>
