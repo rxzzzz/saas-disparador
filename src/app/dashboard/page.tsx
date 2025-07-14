@@ -75,12 +75,8 @@ export default function DashboardHomePage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const supabase = createClient();
 
-  // Lista de grupos únicos
-  const uniqueGroups = [
-    ...(new Set(
-      allContacts.map((c) => c.group).filter(Boolean)
-    ) as Set<string>),
-  ];
+  // Estado global de grupos únicos
+  const [uniqueGroups, setUniqueGroups] = useState<string[]>([]);
 
   // Array com as cores de fundo que queremos usar (classes do Tailwind)
   const avatarColors = [
@@ -120,9 +116,25 @@ export default function DashboardHomePage() {
     setIsLoadingContacts(false);
   };
 
+  // searchTerm precisa ser declarado antes do useEffect
+  const [searchTerm, setSearchTerm] = useState("");
+
   useEffect(() => {
-    fetchContacts(1); // Busca a primeira página ao carregar
-  }, []);
+    // Busca a primeira página de contatos
+    fetchContacts(1);
+
+    // Busca todos os grupos únicos existentes
+    const fetchAllGroups = async () => {
+      const { data, error } = await supabase.from("contacts").select("group");
+      if (data) {
+        const groups = [
+          ...(new Set(data.map((c) => c.group).filter(Boolean)) as Set<string>),
+        ];
+        setUniqueGroups(groups);
+      }
+    };
+    fetchAllGroups();
+  }, [searchTerm]);
 
   const handleContactSelect = (contactId: number) => {
     setSelectedContacts((prevSelected) =>
@@ -178,30 +190,35 @@ export default function DashboardHomePage() {
     }
   };
 
-  // Função para selecionar/deselecionar contatos por grupo (toggle)
-  const handleGroupSelect = (groupName: string) => {
-    const contactIdsInGroup = allContacts
-      .filter((contact) => contact.group === groupName)
-      .map((contact) => contact.id);
+  // Função para selecionar/deselecionar todos os contatos de um grupo (global)
+  const handleGroupSelect = async (groupName: string) => {
+    toast.info(`Processando grupo "${groupName}"...`);
+    const { data, error } = await supabase
+      .from("contacts")
+      .select("id")
+      .eq("group", groupName);
 
-    // Verifica se TODOS os contatos do grupo já estão na lista de selecionados
+    if (error || !data) {
+      toast.error(`Erro ao buscar contatos do grupo "${groupName}".`);
+      return;
+    }
+
+    const contactIdsInGroup = data.map((c) => c.id);
     const areAllSelected = contactIdsInGroup.every((id) =>
       selectedContacts.includes(id)
     );
 
     if (areAllSelected) {
-      // MODO DESELECIONAR: Remove todos os contatos deste grupo da seleção
-      setSelectedContacts((prevSelected) =>
-        prevSelected.filter((id) => !contactIdsInGroup.includes(id))
+      setSelectedContacts((prev) =>
+        prev.filter((id) => !contactIdsInGroup.includes(id))
       );
-      toast.info(`Contatos do grupo "${groupName}" removidos da seleção.`);
+      toast.success(`Contatos do grupo "${groupName}" removidos da seleção.`);
     } else {
-      // MODO SELECIONAR: Adiciona todos os contatos do grupo (evitando duplicatas)
-      setSelectedContacts((prevSelected) => [
-        ...new Set([...prevSelected, ...contactIdsInGroup]),
+      setSelectedContacts((prev) => [
+        ...new Set([...prev, ...contactIdsInGroup]),
       ]);
-      toast.info(
-        `${contactIdsInGroup.length} contatos do grupo "${groupName}" adicionados à seleção.`
+      toast.success(
+        `${contactIdsInGroup.length} contatos do grupo "${groupName}" adicionados.`
       );
     }
   };
@@ -267,7 +284,7 @@ export default function DashboardHomePage() {
     }
   };
 
-  const [searchTerm, setSearchTerm] = useState("");
+  // ...existing code...
   const filteredContacts = allContacts.filter(
     (contact) =>
       contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -463,33 +480,32 @@ export default function DashboardHomePage() {
               {/* Coluna da Direita para os Grupos (ocupa 1 de 3 colunas) */}
               <div className="lg:col-span-1">
                 <Label>Seleção Rápida por Grupo</Label>
-                <div className="mt-2 space-y-2">
+                <CardContent>
                   {isLoadingContacts ? (
                     <p className="text-sm text-muted-foreground">
                       Carregando...
                     </p>
                   ) : uniqueGroups.length > 0 ? (
-                    uniqueGroups.map((group) => (
-                      <div
-                        key={group}
-                        onClick={() => handleGroupSelect(group)}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted cursor-pointer transition-all duration-200 ease-in-out"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm font-medium">{group}</span>
+                    <div className="space-y-2">
+                      {uniqueGroups.map((group) => (
+                        <div
+                          key={group}
+                          onClick={() => handleGroupSelect(group)}
+                          className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">{group}</span>
+                          </div>
                         </div>
-                        <Badge variant="secondary">
-                          {allContacts.filter((c) => c.group === group).length}
-                        </Badge>
-                      </div>
-                    ))
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Nenhum grupo criado.
+                      Nenhum grupo encontrado.
                     </p>
                   )}
-                </div>
+                </CardContent>
               </div>
             </CardContent>
           </Card>
