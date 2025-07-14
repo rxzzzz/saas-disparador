@@ -367,7 +367,7 @@ export default function DashboardHomePage() {
             <CardContent>
               <>
                 {/* Barra de Ferramentas */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center mb-4">
                   {/* Placeholder para os controles da esquerda */}
                   <div id="toolbar-left">
                     <div className="flex items-center space-x-2">
@@ -381,26 +381,21 @@ export default function DashboardHomePage() {
                       />
                       <Label htmlFor="select-all">Selecionar todos</Label>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {selectedContacts.length} de {filteredContacts.length}{" "}
-                      selecionados
-                    </div>
                   </div>
                   {/* Placeholder para a busca da direita */}
-                  <div id="toolbar-right">
-                    <Input
-                      placeholder="🔍 Buscar contatos..."
-                      className="mb-4"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
+                  <div id="toolbar-right"></div>
                 </div>
 
                 {/* Conteúdo Principal com Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Coluna da Esquerda: Lista de Contatos */}
                   <div className="lg:col-span-2" id="contact-list-column">
+                    <Input
+                      placeholder="🔍 Buscar contatos..."
+                      className="mb-4"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                     <div className="border rounded-lg h-72 overflow-y-auto">
                       {isLoadingContacts ? (
                         <p className="text-center p-4">Carregando...</p>
@@ -445,7 +440,11 @@ export default function DashboardHomePage() {
                         </p>
                       )}
                     </div>
-                    <div className="flex items-center justify-end mt-4">
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="text-sm text-muted-foreground">
+                        {selectedContacts.length} de {filteredContacts.length}{" "}
+                        selecionados
+                      </div>
                       <Pagination>
                         <PaginationContent>
                           <PaginationItem>
