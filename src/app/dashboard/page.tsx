@@ -39,6 +39,14 @@ import { createClient } from "@/lib/supabaseClient";
 import { Contact } from "@/types"; // Nosso tipo central de contato
 import { Checkbox } from "@/components/ui/checkbox"; // O componente de caixa de seleção
 
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+
 export default function DashboardHomePage() {
   const [isCampaignSending, setIsCampaignSending] = useState(false);
   // ...existing code...
@@ -46,6 +54,10 @@ export default function DashboardHomePage() {
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
   const [isLoadingContacts, setIsLoadingContacts] = useState(true);
   const [message, setMessage] = useState("");
+  // Estados de paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10); // 10 contatos por página
+  const [totalContacts, setTotalContacts] = useState(0);
   // Pré-visualização dinâmica da mensagem
   const previewContact = allContacts[0] || {
     name: "Exemplo",
@@ -85,19 +97,31 @@ export default function DashboardHomePage() {
     return avatarColors[id % avatarColors.length];
   };
 
+  // Função de busca paginada
+  const fetchContacts = async (page = 1) => {
+    setIsLoadingContacts(true);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    // Busca paginada
+    const { data, error, count } = await supabase
+      .from("contacts")
+      .select("*", { count: "exact" })
+      .range(from, to);
+
+    if (data) {
+      setAllContacts(data);
+      setTotalContacts(count || 0);
+      setCurrentPage(page);
+    }
+    if (error) {
+      toast.error("Erro ao carregar contatos.");
+    }
+    setIsLoadingContacts(false);
+  };
+
   useEffect(() => {
-    const fetchContacts = async () => {
-      setIsLoadingContacts(true);
-      const { data, error } = await supabase.from("contacts").select("*");
-      if (data) {
-        setAllContacts(data);
-      }
-      if (error) {
-        toast.error("Erro ao carregar contatos.");
-      }
-      setIsLoadingContacts(false);
-    };
-    fetchContacts();
+    fetchContacts(1); // Busca a primeira página ao carregar
   }, []);
 
   const handleContactSelect = (contactId: number) => {
@@ -109,17 +133,48 @@ export default function DashboardHomePage() {
   };
 
   // NOVA FUNÇÃO: Selecionar ou deselecionar todos os contatos
-  const handleSelectAll = () => {
-    const filteredIds = filteredContacts.map((c) => c.id);
-    const allVisibleSelected =
-      filteredIds.length > 0 &&
-      filteredIds.every((id) => selectedContacts.includes(id));
-    if (allVisibleSelected) {
-      setSelectedContacts((prev) =>
-        prev.filter((id) => !filteredIds.includes(id))
+  const handleSelectAll = async () => {
+    toast.info("Buscando todos os contatos para seleção...");
+
+    // Constrói a query de busca, mas sem paginação, para pegar todos os IDs
+    let query = supabase.from("contacts").select("id");
+
+    if (searchTerm) {
+      query = query.or(
+        `name.ilike.%${searchTerm}%,phone.ilike.%${searchTerm}%`
       );
-    } else {
-      setSelectedContacts((prev) => [...new Set([...prev, ...filteredIds])]);
+    }
+
+    const { data: allMatchingContacts, error } = await query;
+
+    if (error) {
+      toast.error("Erro ao buscar todos os contatos.");
+      return;
+    }
+
+    if (allMatchingContacts) {
+      const allIds = allMatchingContacts.map((c) => c.id);
+
+      // Verifica se todos os IDs encontrados já estão na seleção
+      const areAllSelected = allIds.every((id) =>
+        selectedContacts.includes(id)
+      );
+
+      if (areAllSelected) {
+        // Deseleciona todos os contatos encontrados
+        setSelectedContacts((prev) =>
+          prev.filter((id) => !allIds.includes(id))
+        );
+        toast.success(
+          "Todos os contatos correspondentes foram deselecionados."
+        );
+      } else {
+        // Seleciona todos os contatos encontrados (sem duplicatas)
+        setSelectedContacts((prev) => [...new Set([...prev, ...allIds])]);
+        toast.success(
+          `${allIds.length} contatos selecionados em todas as páginas.`
+        );
+      }
     }
   };
 
@@ -301,8 +356,8 @@ export default function DashboardHomePage() {
                       id="select-all"
                       onCheckedChange={handleSelectAll}
                       checked={
-                        filteredContacts.length > 0 &&
-                        selectedContacts.length === filteredContacts.length
+                        totalContacts > 0 &&
+                        selectedContacts.length === totalContacts
                       }
                     />
                     <Label htmlFor="select-all">Selecionar todos</Label>
@@ -318,7 +373,7 @@ export default function DashboardHomePage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <div className="border rounded-lg h-96 overflow-y-auto">
+                <div className="border rounded-lg h-72 overflow-y-auto">
                   {isLoadingContacts ? (
                     <p className="text-center p-4">Carregando...</p>
                   ) : allContacts.length > 0 ? (
@@ -359,6 +414,49 @@ export default function DashboardHomePage() {
                       Nenhum contato encontrado.
                     </p>
                   )}
+                </div>
+                <div className="flex items-center justify-end mt-4">
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (currentPage > 1) fetchContacts(currentPage - 1);
+                          }}
+                          className={
+                            currentPage === 1
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="text-sm px-4">
+                          Página {currentPage} de{" "}
+                          {Math.ceil(totalContacts / pageSize)}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (
+                              currentPage < Math.ceil(totalContacts / pageSize)
+                            )
+                              fetchContacts(currentPage + 1);
+                          }}
+                          className={
+                            currentPage >= Math.ceil(totalContacts / pageSize)
+                              ? "pointer-events-none opacity-50"
+                              : ""
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
                 </div>
               </div>
 
