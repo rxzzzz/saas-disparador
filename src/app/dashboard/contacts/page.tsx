@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PlusCircle, Trash2, Edit, Pencil } from "lucide-react";
 import AddContactModal from "@/components/contacts/AddContactModal";
 import RenameGroupModal from "@/components/RenameGroupModal";
+import CreateGroupModal from "@/components/CreateGroupModal";
 import {
   Dialog,
   DialogContent,
@@ -46,19 +47,31 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default function ContactsPage() {
+  // Estado para modal de criar grupo
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
+  // Função para criar grupo (apenas adiciona à lista local)
+  const handleCreateGroup = (groupName: string) => {
+    if (!groupName) return;
+    // Evita duplicidade
+    if (!uniqueGroups.includes(groupName)) {
+      setUniqueGroups((prev) => [...prev, groupName]);
+      toast.success("Grupo criado com sucesso.");
+    }
+    setIsCreateGroupModalOpen(false);
+  };
   // Estado para grupo selecionado para exclusão
   const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   // Função para excluir grupo
   const handleDeleteGroup = async (groupName: string) => {
     const { error } = await supabase
-      .from('contacts')
+      .from("contacts")
       .update({ group: null })
-      .eq('group', groupName);
+      .eq("group", groupName);
     if (error) {
-      toast.error('Erro ao excluir grupo.', { description: error.message });
+      toast.error("Erro ao excluir grupo.", { description: error.message });
     } else {
-      toast.success('Grupo excluído com sucesso.');
+      toast.success("Grupo excluído com sucesso.");
       setIsDeleteModalOpen(false);
       setGroupToDelete(null);
       fetchContacts(currentPage, searchTerm, filterGroup);
@@ -403,45 +416,63 @@ export default function ContactsPage() {
                       </Badge>
                     </div>
                   ))}
-      {/* Modal de confirmação de exclusão de grupo */}
-      {isDeleteModalOpen && groupToDelete && (
-        <Dialog open onOpenChange={() => { setIsDeleteModalOpen(false); setGroupToDelete(null); }}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Excluir Grupo</DialogTitle>
-              <DialogDescription>
-                Tem certeza que deseja excluir este grupo? Os contatos associados permanecerão, mas serão removidos do grupo.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <button
-                className="px-4 py-2 border rounded bg-transparent text-foreground hover:bg-accent"
-                onClick={() => { setIsDeleteModalOpen(false); setGroupToDelete(null); }}
-                type="button"
-              >
-                Cancelar
-              </button>
-              <button
-                className="px-4 py-2 bg-destructive text-white rounded hover:bg-destructive/90"
-                onClick={() => handleDeleteGroup(groupToDelete)}
-                type="button"
-              >
-                Excluir
-              </button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+                {/* Modal de confirmação de exclusão de grupo */}
+                {isDeleteModalOpen && groupToDelete && (
+                  <Dialog
+                    open
+                    onOpenChange={() => {
+                      setIsDeleteModalOpen(false);
+                      setGroupToDelete(null);
+                    }}
+                  >
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Excluir Grupo</DialogTitle>
+                        <DialogDescription>
+                          Tem certeza que deseja excluir este grupo? Os contatos
+                          associados permanecerão, mas serão removidos do grupo.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <button
+                          className="px-4 py-2 border rounded bg-transparent text-foreground hover:bg-accent"
+                          onClick={() => {
+                            setIsDeleteModalOpen(false);
+                            setGroupToDelete(null);
+                          }}
+                          type="button"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          className="px-4 py-2 bg-destructive text-white rounded hover:bg-destructive/90"
+                          onClick={() => handleDeleteGroup(groupToDelete)}
+                          type="button"
+                        >
+                          Excluir
+                        </button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mt-4"
-                onClick={() => setIsModalOpen(true)}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Criar novo grupo
-              </Button>
+              <div className="mt-4">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full hover:bg-zinc-200"
+                  onClick={() => setIsCreateGroupModalOpen(true)}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Criar novo grupo
+                </Button>
+              </div>
+              {/* Modal para criar novo grupo */}
+              <CreateGroupModal
+                isOpen={isCreateGroupModalOpen}
+                onClose={() => setIsCreateGroupModalOpen(false)}
+                onCreate={handleCreateGroup}
+              />
             </CardContent>
           </Card>
         </div>
