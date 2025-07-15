@@ -273,7 +273,7 @@ export default function ContactsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-3">
           <div className="bg-card p-6 rounded-lg shadow-sm">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-2 mb-4">
               <div className="flex items-center gap-4">
                 <Input
                   placeholder="🔍 Buscar por nome ou telefone..."
@@ -294,6 +294,44 @@ export default function ContactsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {selectedContactIds.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Atribuir ao grupo:</Label>
+                  <Select
+                    onValueChange={async (groupName) => {
+                      if (!groupName) return;
+                      const { error } = await supabase
+                        .from("contacts")
+                        .update({ group: groupName })
+                        .in("id", selectedContactIds);
+                      if (error) {
+                        toast.error("Erro ao atribuir grupo", {
+                          description: error.message,
+                        });
+                      } else {
+                        toast.success(
+                          "Contatos atribuídos ao grupo com sucesso."
+                        );
+                        setSelectedContactIds([]);
+                        fetchContacts(currentPage, searchTerm, filterGroup);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Escolha o grupo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {uniqueGroups
+                        .filter((g) => g !== "Todos")
+                        .map((group) => (
+                          <SelectItem key={group} value={group}>
+                            {group}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <Table>
