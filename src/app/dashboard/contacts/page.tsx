@@ -22,6 +22,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { PlusCircle, Trash2, Edit, Pencil } from "lucide-react";
 import AddContactModal from "@/components/contacts/AddContactModal";
 import RenameGroupModal from "@/components/RenameGroupModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
@@ -38,6 +46,24 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default function ContactsPage() {
+  // Estado para grupo selecionado para exclusão
+  const [groupToDelete, setGroupToDelete] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  // Função para excluir grupo
+  const handleDeleteGroup = async (groupName: string) => {
+    const { error } = await supabase
+      .from('contacts')
+      .update({ group: null })
+      .eq('group', groupName);
+    if (error) {
+      toast.error('Erro ao excluir grupo.', { description: error.message });
+    } else {
+      toast.success('Grupo excluído com sucesso.');
+      setIsDeleteModalOpen(false);
+      setGroupToDelete(null);
+      fetchContacts(currentPage, searchTerm, filterGroup);
+    }
+  };
   // Estado para controlar a abertura do modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -360,12 +386,52 @@ export default function ContactsPage() {
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
+                        <button
+                          type="button"
+                          className="text-destructive hover:text-destructive/80"
+                          onClick={() => {
+                            setGroupToDelete(group);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          aria-label={`Excluir grupo ${group}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </span>
                       <Badge variant="secondary">
                         {contacts.filter((c) => c.group === group).length}
                       </Badge>
                     </div>
                   ))}
+      {/* Modal de confirmação de exclusão de grupo */}
+      {isDeleteModalOpen && groupToDelete && (
+        <Dialog open onOpenChange={() => { setIsDeleteModalOpen(false); setGroupToDelete(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Excluir Grupo</DialogTitle>
+              <DialogDescription>
+                Tem certeza que deseja excluir este grupo? Os contatos associados permanecerão, mas serão removidos do grupo.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <button
+                className="px-4 py-2 border rounded bg-transparent text-foreground hover:bg-accent"
+                onClick={() => { setIsDeleteModalOpen(false); setGroupToDelete(null); }}
+                type="button"
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-4 py-2 bg-destructive text-white rounded hover:bg-destructive/90"
+                onClick={() => handleDeleteGroup(groupToDelete)}
+                type="button"
+              >
+                Excluir
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
               </div>
               <Button
                 variant="outline"
