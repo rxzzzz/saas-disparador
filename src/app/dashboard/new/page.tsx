@@ -49,6 +49,9 @@ import {
 
 export default function DashboardHomePage() {
   const [isCampaignSending, setIsCampaignSending] = useState(false);
+  // Estado para agendamento
+  const [scheduleType, setScheduleType] = useState<"now" | "later">("now");
+  const [scheduledAt, setScheduledAt] = useState<string>("");
   // ...existing code...
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
@@ -527,80 +530,58 @@ export default function DashboardHomePage() {
             </CardContent>
           </Card>
 
-          {/* Card de Agendamento (inalterado) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Agendamento</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup
-                value={scheduleOption}
-                onValueChange={setScheduleOption}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="now" id="r1" />
-                  <Label htmlFor="r1">Enviar agora</Label>
+          {/* Card de Opções de envio - NOVO AGENDAMENTO */}
+          <div className="w-full mt-12 mb-8">
+            <Card className="border rounded-lg shadow-sm p-6">
+              <CardHeader className="pb-2 px-0">
+                <CardTitle className="text-lg">Opções de envio</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-0 px-0">
+                <div className="flex flex-col gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      value="now"
+                      checked={scheduleType === "now"}
+                      onChange={() => setScheduleType("now")}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">Enviar agora</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      value="later"
+                      checked={scheduleType === "later"}
+                      onChange={() => setScheduleType("later")}
+                      className="accent-primary"
+                    />
+                    <span className="text-sm">Agendar para depois</span>
+                  </label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="later" id="r2" />
-                  <Label htmlFor="r2">Agendar para depois</Label>
-                </div>
-              </RadioGroup>
-
-              {scheduleOption === "later" && (
-                <div className="mt-4 p-4 border rounded-lg bg-zinc-50 dark:bg-zinc-900 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label>Data</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !date && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date ? (
-                              format(date, "dd/MM/yyyy")
-                            ) : (
-                              <span>Escolha uma data</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={date}
-                            onSelect={setDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    <div>
-                      <Label>Hora</Label>
-                      <Input type="time" defaultValue="12:30" />
-                    </div>
+                {scheduleType === "later" && (
+                  <div className="mt-4">
+                    <label
+                      htmlFor="scheduledAt"
+                      className="block text-sm font-medium mb-1"
+                    >
+                      Escolha a data e hora
+                    </label>
+                    <input
+                      id="scheduledAt"
+                      type="datetime-local"
+                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                      value={scheduledAt}
+                      onChange={(e) => setScheduledAt(e.target.value)}
+                      min={new Date().toISOString().slice(0, 16)}
+                    />
                   </div>
-                  <div>
-                    <Label>Fuso horário</Label>
-                    <Select defaultValue="gmt-3">
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o fuso horário" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gmt-3">Brasília (GMT-3)</SelectItem>
-                        <SelectItem value="gmt-4">Manaus (GMT-4)</SelectItem>
-                        <SelectItem value="utc">UTC</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Coluna da Direita */}
