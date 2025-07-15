@@ -47,6 +47,8 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 export default function ContactsPage() {
+  // Estado para seleção de contatos
+  const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
   // Estado para modal de criar grupo
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   // Função para criar grupo (apenas adiciona à lista local)
@@ -281,35 +283,50 @@ export default function ContactsPage() {
                     </TableCell>
                   </TableRow>
                 ) : contacts.length > 0 ? (
-                  contacts.map((contact) => (
-                    <TableRow key={contact.id}>
-                      <TableCell>
-                        <Checkbox />
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {contact.name}
-                      </TableCell>
-                      <TableCell>{contact.phone}</TableCell>
-                      <TableCell>{contact.group || "-"}</TableCell>
-                      <TableCell className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditContact(contact)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteContact(contact.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  contacts.map((contact) => {
+                    const isSelected = selectedContactIds.includes(contact.id);
+                    return (
+                      <TableRow
+                        key={contact.id}
+                        className={isSelected ? "bg-muted" : ""}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => {
+                              setSelectedContactIds((prev) =>
+                                checked
+                                  ? [...prev, contact.id]
+                                  : prev.filter((id) => id !== contact.id)
+                              );
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {contact.name}
+                        </TableCell>
+                        <TableCell>{contact.phone}</TableCell>
+                        <TableCell>{contact.group || "-"}</TableCell>
+                        <TableCell className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditContact(contact)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteContact(contact.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center h-24">
