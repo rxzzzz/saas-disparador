@@ -93,6 +93,8 @@ export default function ContactsPage() {
 
   // Busca grupos únicos para o filtro (agora só para o select)
   const [uniqueGroups, setUniqueGroups] = useState<string[]>(["Todos"]);
+  // Novo estado: contagem de contatos por grupo
+  const [groupCounts, setGroupCounts] = useState<{ [group: string]: number }>({});
 
   // Estado para grupo selecionado para renomear
   const [selectedGroupName, setSelectedGroupName] = useState<string | null>(
@@ -159,11 +161,35 @@ export default function ContactsPage() {
       setContacts(data);
       setTotalContacts(count || 0);
       setCurrentPage(page);
-      // Atualiza os grupos únicos para o filtro
-      const groups = data.map((c: Contact) => c.group || "Sem Grupo");
-      setUniqueGroups(["Todos", ...Array.from(new Set(groups))]);
+      // Atualiza os grupos únicos para o filtro (busca todos os grupos do banco)
+      fetchAllGroupsAndCounts();
     }
     setIsLoading(false);
+  };
+
+  // Busca todos os grupos distintos e suas contagens diretamente do Supabase
+  const fetchAllGroupsAndCounts = async () => {
+    // Busca todos os grupos distintos
+    const { data: groupsData, error: groupsError } = await supabase
+      .from("contacts")
+      .select("group")
+      .neq("group", null);
+    if (groupsError) return;
+    const groupNames = Array.from(new Set(groupsData.map((g: any) => g.group)));
+    setUniqueGroups(["Todos", ...groupNames]);
+
+    // Para cada grupo, busca a contagem total
+    const counts: { [group: string]: number } = {};
+    await Promise.all(
+      groupNames.map(async (groupName: string) => {
+        const { count } = await supabase
+          .from("contacts")
+          .select("*", { count: "exact", head: true })
+          .eq("group", groupName);
+        counts[groupName] = count || 0;
+      })
+    );
+    setGroupCounts(counts);
   };
 
   const handleEditContact = (contact: Contact) => {
@@ -202,6 +228,11 @@ export default function ContactsPage() {
     }, 500);
     return () => clearTimeout(handler);
   }, [searchTerm, filterGroup]);
+
+  // Carrega grupos e contagens ao montar
+  useEffect(() => {
+    fetchAllGroupsAndCounts();
+  }, []);
 
   return (
     <>
@@ -429,7 +460,7 @@ export default function ContactsPage() {
                         </button>
                       </span>
                       <Badge variant="secondary">
-                        {contacts.filter((c) => c.group === group).length}
+                        {groupCounts[group] ?? 0}
                       </Badge>
                     </div>
                   ))}
