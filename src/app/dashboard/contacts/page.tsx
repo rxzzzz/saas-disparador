@@ -94,7 +94,9 @@ export default function ContactsPage() {
   // Busca grupos únicos para o filtro (agora só para o select)
   const [uniqueGroups, setUniqueGroups] = useState<string[]>(["Todos"]);
   // Novo estado: contagem de contatos por grupo
-  const [groupCounts, setGroupCounts] = useState<{ [group: string]: number }>({});
+  const [groupCounts, setGroupCounts] = useState<{ [group: string]: number }>(
+    {}
+  );
 
   // Estado para grupo selecionado para renomear
   const [selectedGroupName, setSelectedGroupName] = useState<string | null>(
