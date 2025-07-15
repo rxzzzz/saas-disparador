@@ -19,8 +19,9 @@ import {
   PaginationNext,
 } from "@/components/ui/pagination";
 import { Checkbox } from "@/components/ui/checkbox";
-import { PlusCircle, Trash2, Edit } from "lucide-react";
+import { PlusCircle, Trash2, Edit, Pencil } from "lucide-react";
 import AddContactModal from "@/components/contacts/AddContactModal";
+import RenameGroupModal from "@/components/RenameGroupModal";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
@@ -38,7 +39,6 @@ import { Badge } from "@/components/ui/badge";
 
 export default function ContactsPage() {
   // Estado para controlar a abertura do modal
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +52,33 @@ export default function ContactsPage() {
 
   // Busca grupos únicos para o filtro (agora só para o select)
   const [uniqueGroups, setUniqueGroups] = useState<string[]>(["Todos"]);
+
+  // Estado para grupo selecionado para renomear
+  const [selectedGroupName, setSelectedGroupName] = useState<string | null>(
+    null
+  );
+  const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+  // Função para renomear grupo
+  const handleRenameGroup = async (oldName: string, newName: string) => {
+    if (!newName || newName === oldName) {
+      setIsRenameModalOpen(false);
+      setSelectedGroupName(null);
+      return;
+    }
+    const { error } = await supabase
+      .from("contacts")
+      .update({ group: newName })
+      .eq("group", oldName);
+    if (error) {
+      toast.error("Erro ao renomear grupo.", { description: error.message });
+    } else {
+      toast.success("Grupo renomeado com sucesso.");
+      setIsRenameModalOpen(false);
+      setSelectedGroupName(null);
+      // Atualiza lista de contatos e grupos
+      fetchContacts(currentPage, searchTerm, filterGroup);
+    }
+  };
 
   // Função centralizada para busca, filtro e paginação no backend
   const fetchContacts = async (
@@ -149,6 +176,18 @@ export default function ContactsPage() {
         contactToEdit={editingContact} // Passa o contato para o modal
         existingGroups={uniqueGroups.filter((g) => g !== "Todos")}
       />
+
+      {/* Modal para renomear grupo */}
+      {isRenameModalOpen && selectedGroupName && (
+        <RenameGroupModal
+          currentName={selectedGroupName}
+          onSubmit={(newName) => handleRenameGroup(selectedGroupName, newName)}
+          onClose={() => {
+            setIsRenameModalOpen(false);
+            setSelectedGroupName(null);
+          }}
+        />
+      )}
 
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">Lista de Contatos</h1>
@@ -308,7 +347,20 @@ export default function ContactsPage() {
                       key={group}
                       className="flex items-center justify-between p-2 rounded-md hover:bg-muted"
                     >
-                      <span className="text-sm font-medium">{group}</span>
+                      <span className="text-sm font-medium flex items-center gap-2">
+                        {group}
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-primary"
+                          onClick={() => {
+                            setSelectedGroupName(group);
+                            setIsRenameModalOpen(true);
+                          }}
+                          aria-label={`Renomear grupo ${group}`}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </span>
                       <Badge variant="secondary">
                         {contacts.filter((c) => c.group === group).length}
                       </Badge>
